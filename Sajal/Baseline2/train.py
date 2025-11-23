@@ -7,7 +7,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import Dataset, DataLoader
-from constants import SEED, TRAIN_LABELS_FILENAME, TRAIN_DATA_FILENAME, TRAINING_SIZE, BATCH_SIZE, NUM_EPOCHS, RESTORE_MODEL, TRAIN_DIR
+from constants import SEED, TRAIN_LABELS_FILENAME, TRAIN_DATA_FILENAME, TRAINING_SIZE, BATCH_SIZE, NUM_EPOCHS, RESTORE_MODEL, TRAIN_DIR, CHECKPOINT_DIR
 from utils import extract_data, extract_labels, get_prediction_with_groundtruth, get_prediction_with_overlay, error_rate
 from models import RoadSegmentationCNN
 
@@ -71,9 +71,11 @@ def main():
     train_size = len(dataset)
     scheduler = optim.lr_scheduler.ExponentialLR(optimizer, gamma=0.95)
 
+    os.makedirs(CHECKPOINT_DIR, exist_ok=True)
+
     # Load model if requested
     if RESTORE_MODEL:
-        checkpoint_path = os.path.join(TRAIN_DIR, "model.pth")
+        checkpoint_path = os.path.join(CHECKPOINT_DIR, "model.pth")
         if os.path.exists(checkpoint_path):
             model.load_state_dict(torch.load(checkpoint_path))
             print("Model restored.")
@@ -130,13 +132,13 @@ def main():
             scheduler.step()
 
             # Save model
-            checkpoint_path = '/content/model.pth'
+            checkpoint_path = os.path.join(CHECKPOINT_DIR, "model.pth")
             torch.save(model.state_dict(), checkpoint_path)
             print(f"Model saved in file: {checkpoint_path}")
 
     # Generate predictions
     print("Running prediction on training set")
-    prediction_training_dir = "predictions_training/"
+    prediction_training_dir = os.path.join(TRAIN_DIR, "predictions_training/")
     os.makedirs(prediction_training_dir, exist_ok=True)
     
     model.eval()
