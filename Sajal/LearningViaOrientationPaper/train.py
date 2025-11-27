@@ -25,7 +25,11 @@ val_loss_angle_file = open('log_folder/val_angle.txt', "w+")
 
 
 MODEL_CHOOSEN = "StackHourglassNetMTL" #"LinkNet34MTL"
-multi_scale_pred = True
+
+if MODEL_CHOOSEN == "StackHourglassNetMTL":
+    multi_scale_pred = True
+else:
+    multi_scale_pred = False
 
 num_gpus = torch.cuda.device_count()
 
