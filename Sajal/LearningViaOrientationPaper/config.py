@@ -59,7 +59,7 @@ config = {
         "lr": 0.01,
         "d_lr": 0.0001,
         "lr_step": 0.1,
-        "lr_drop_epoch": [60,90,110]
+        "lr_drop_epoch": "[60,90,110]"
     },
     "trainer": {
         "total_epochs": 120,

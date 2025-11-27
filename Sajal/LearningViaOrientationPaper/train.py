@@ -1,5 +1,5 @@
 import os
-import datetime
+from datetime import datetime
 import numpy as np
 import torch
 import torch.optim as optim
@@ -15,10 +15,9 @@ from dataset import DeepGlobeDataset
 
 util.setSeed(config)
 
-experiment_dir = os.path.join("experiment_folder")
+experiment_dir = os.path.join("log_folder")
 os.makedirs(experiment_dir, exist_ok=True)
 
-os.makedirs('log_folder', exist_ok = True)
 train_loss_file = open('log_folder/train.txt', "w+")
 val_loss_file = open('log_folder/val.txt', "w+")
 train_loss_angle_file = open("log_folder/train_angle.txt", "w+")
@@ -199,67 +198,68 @@ def val(epoch):
     hist_angles = np.zeros((config["task2_classes"], config["task2_classes"]))
     crop_size = config["val_dataset"]["deepglobe"]["crop_size"]
 
-    for i, (inputsBGR, labels, vecmap_angles) in enumerate(val_loader, 0):
-        inputsBGR = Variable(
-            inputsBGR.float().cuda(), volatile=True, requires_grad=False
-        )
-
-        outputs, pred_vecmaps = model(inputsBGR)
-
-        if multi_scale_pred:
-            pass
-        else:
-            loss1 = road_loss(outputs, util.to_variable(labels[0], True, False), True)
-            loss2 = angle_loss(pred_vecmaps, util.to_variable(labels[0], True, False))
-
-        test_loss_iou += loss1.item()
-        test_loss_vec += loss2.item()
-
-        _, predicted = torch.max(outputs.data, 1)
-
-        correctLabel = labels[-1].view(-1, crop_size, crop_size).long()
-        hist += util.fast_hist(
-            predicted.view(predicted.size(0), -1).cpu().numpy(),
-            correctLabel.view(correctLabel.size(0), -1).cpu().numpy(),
-            config["task1_classes"],
-        )
-
-        _, predicted_angle = torch.max(pred_vecmaps.data, 1)
-        correct_angles = vecmap_angles[-1].view(-1, crop_size, crop_size).long()
-        hist_angles += util.fast_hist(
-            predicted_angle.view(predicted_angle.size(0), -1).cpu().numpy(),
-            correct_angles.view(correct_angles.size(0), -1).cpu().numpy(),
-            config["task2_classes"],
-        )
-
-        p_accu, miou, road_iou, fwacc = util.performMetrics(
-            train_loss_file,
-            val_loss_file,
-            epoch,
-            hist,
-            test_loss_iou / (i + 1),
-            test_loss_vec / (i + 1),
-            is_train=False,
-        )
-
-        p_accu_angle, miou_angle, fwacc_angle = util.performAngleMetrics(
-            train_loss_angle_file, val_loss_angle_file, epoch, hist_angles, is_train=False
-        )
-
-        if i % 100 == 0 or i == len(val_loader) - 1:
-            images_path = "{}/images/".format(experiment_dir)
-            util.ensure_dir(images_path)
-            util.savePredictedProb(
-                inputsBGR.data.cpu(),
-                labels[-1].cpu(),
-                predicted.cpu(),
-                F.softmax(outputs, dim=1).data.cpu()[:, 1, :, :],
-                predicted_angle.cpu(),
-                os.path.join(images_path, "validate_pair_{}_{}.png".format(epoch, i)),
-                norm_type=config["val_dataset"]["normalize_type"],
+    with torch.no_grad():
+        for i, (inputsBGR, labels, vecmap_angles) in enumerate(val_loader, 0):
+            inputsBGR = Variable(
+                inputsBGR.float().cuda(), requires_grad=False
             )
 
-        del inputsBGR, labels, predicted, outputs, pred_vecmaps, predicted_angle
+            outputs, pred_vecmaps = model(inputsBGR)
+
+            if multi_scale_pred:
+                pass
+            else:
+                loss1 = road_loss(outputs, util.to_variable(labels[0], requires_grad = False), True)
+                loss2 = angle_loss(pred_vecmaps, util.to_variable(labels[0], requires_grad = False))
+
+            test_loss_iou += loss1.item()
+            test_loss_vec += loss2.item()
+
+            _, predicted = torch.max(outputs.data, 1)
+
+            correctLabel = labels[-1].view(-1, crop_size, crop_size).long()
+            hist += util.fast_hist(
+                predicted.view(predicted.size(0), -1).cpu().numpy(),
+                correctLabel.view(correctLabel.size(0), -1).cpu().numpy(),
+                config["task1_classes"],
+            )
+
+            _, predicted_angle = torch.max(pred_vecmaps.data, 1)
+            correct_angles = vecmap_angles[-1].view(-1, crop_size, crop_size).long()
+            hist_angles += util.fast_hist(
+                predicted_angle.view(predicted_angle.size(0), -1).cpu().numpy(),
+                correct_angles.view(correct_angles.size(0), -1).cpu().numpy(),
+                config["task2_classes"],
+            )
+
+            p_accu, miou, road_iou, fwacc = util.performMetrics(
+                train_loss_file,
+                val_loss_file,
+                epoch,
+                hist,
+                test_loss_iou / (i + 1),
+                test_loss_vec / (i + 1),
+                is_train=False,
+            )
+
+            p_accu_angle, miou_angle, fwacc_angle = util.performAngleMetrics(
+                train_loss_angle_file, val_loss_angle_file, epoch, hist_angles, is_train=False
+            )
+
+            if i % 100 == 0 or i == len(val_loader) - 1:
+                images_path = "{}/images/".format(experiment_dir)
+                util.ensure_dir(images_path)
+                util.savePredictedProb(
+                    inputsBGR.data.cpu(),
+                    labels[-1].cpu(),
+                    predicted.cpu(),
+                    F.softmax(outputs, dim=1).data.cpu()[:, 1, :, :],
+                    predicted_angle.cpu(),
+                    os.path.join(images_path, "validate_pair_{}_{}.png".format(epoch, i)),
+                    norm_type=config["val_dataset"]["normalize_type"],
+                )
+
+            del inputsBGR, labels, predicted, outputs, pred_vecmaps, predicted_angle
 
     accuracy, miou, road_iou, fwacc = util.performMetrics(
         train_loss_file,
@@ -293,9 +293,9 @@ def val(epoch):
 
 for epoch in range(start_epoch, total_epochs + 1):
     start_time = datetime.now()
-    scheduler.step(epoch)
     print("\nTraining Epoch: %d" % epoch)
     train(epoch)
+    scheduler.step()
     if epoch % config["trainer"]["test_freq"] == 0:
         print("\nTesting Epoch: %d" % epoch)
         val_loss = val(epoch)
