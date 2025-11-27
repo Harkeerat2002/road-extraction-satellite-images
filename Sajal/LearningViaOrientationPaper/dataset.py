@@ -51,13 +51,13 @@ class RoadDataset(data.Dataset):
 
         self.files = collections.defaultdict(list)
         self.files = {
-            "train":[{"img": "/content/drive/MyDrive/CS433/training/images/satImage_001.png", 'lbl': "/content/drive/MyDrive/CS433/training/groundtruth/satImage_001.png"},
-                      {"img": "/content/drive/MyDrive/CS433/training/images/satImage_002.png", 'lbl': "/content/drive/MyDrive/CS433/training/groundtruth/satImage_002.png"},
-                      {"img": "/content/drive/MyDrive/CS433/training/images/satImage_003.png", 'lbl': "/content/drive/MyDrive/CS433/training/groundtruth/satImage_003.png"}],
+            "train":[{"img": "/home/chaurasi/cs433/Project2/data/training/images/satImage_001.png", 'lbl': "/home/chaurasi/cs433/Project2/data/training/groundtruth/satImage_001.png"},
+                      {"img": "/home/chaurasi/cs433/Project2/data/training/images/satImage_002.png", 'lbl': "/home/chaurasi/cs433/Project2/data/training/groundtruth/satImage_002.png"},
+                      {"img": "/home/chaurasi/cs433/Project2/data/training/images/satImage_003.png", 'lbl': "/home/chaurasi/cs433/Project2/data/training/groundtruth/satImage_003.png"}],
 
-            "val": [{"img": "/content/drive/MyDrive/CS433/training/images/satImage_004.png", 'lbl': "/content/drive/MyDrive/CS433/training/groundtruth/satImage_004.png"},
-                      {"img": "/content/drive/MyDrive/CS433/training/images/satImage_005.png", 'lbl': "/content/drive/MyDrive/CS433/training/groundtruth/satImage_005.png"},
-                      {"img": "/content/drive/MyDrive/CS433/training/images/satImage_006.png", 'lbl': "/content/drive/MyDrive/CS433/training/groundtruth/satImage_006.png"}]
+            "val": [{"img": "/home/chaurasi/cs433/Project2/data/training/images/satImage_004.png", 'lbl': "/home/chaurasi/cs433/Project2/data/training/groundtruth/satImage_004.png"},
+                      {"img": "/home/chaurasi/cs433/Project2/data/training/images/satImage_005.png", 'lbl': "/home/chaurasi/cs433/Project2/data/training/groundtruth/satImage_005.png"},
+                      {"img": "/home/chaurasi/cs433/Project2/data/training/images/satImage_006.png", 'lbl': "/home/chaurasi/cs433/Project2/data/training/groundtruth/satImage_006.png"}]
             }
         """
         for f in self.images:

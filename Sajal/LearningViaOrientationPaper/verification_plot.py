@@ -1,3 +1,4 @@
+import os
 import math
 from numpy import ma
 import cv2
@@ -5,6 +6,11 @@ import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
 from orientation_utils import getKeypoints, getVectorMapsAngles
+
+image_path = '/home/chaurasi/cs433/Project2/data/training/images/satImage_002.png'
+gt_path = '/home/chaurasi/cs433/Project2/data/training/groundtruth/satImage_002.png'
+
+os.makedirs('verification_plots', exist_ok = True)
 
 def plotVecMap(vectorMap, image, figsize_=(6,6), name=''):
     fig = plt.figure(figsize=figsize_)
@@ -23,10 +29,10 @@ def plotVecMap(vectorMap, image, figsize_=(6,6), name=''):
     Q = plt.quiver(X[::s,::s], Y[::s,::s], U[::s,::s], V[::s,::s],scale=70,headaxislength=3,headwidth=4,
                    width=0.008,alpha=.8, color='y')
     fig = matplotlib.pyplot.gcf()
-    plt.savefig(f'verification_vector_map.png', bbox_inches='tight', pad_inches=0.1, dpi=300)
+    plt.savefig('verification_plots/verification_vector_map.png', bbox_inches='tight', pad_inches=0.1, dpi=300)
     plt.show()
 
-gt_plot = cv2.imread('/content/drive/MyDrive/CS433/training/groundtruth/satImage_001.png', 0).astype(np.float32)/ 255.0
+gt_plot = cv2.imread(gt_path, 0).astype(np.float32)/ 255.0
 keypoints = getKeypoints(
         gt_plot, is_gaussian=False, smooth_dist=4
     )
@@ -34,11 +40,11 @@ keypoints = getKeypoints(
 vecmap, vecmap_angles = getVectorMapsAngles(
         (int(math.ceil(400 / (1 * 1.0))), int(math.ceil(400 / (1 * 1.0)))), keypoints, theta=10, bin_size=10
     )
-plotVecMap(vecmap, cv2.imread('/content/drive/MyDrive/CS433/training/images/satImage_001.png').astype(np.uint8))
+plotVecMap(vecmap, cv2.imread(image_path).astype(np.uint8))
 
 plt.axis('off')
 plt.title("Orientation Angles Vector Map")
 plt.imshow(vecmap_angles, vmin=0, vmax=36)
 plt.colorbar()
-plt.savefig('verification_orientation_angle_map.png', bbox_inches='tight', pad_inches=0.1, dpi=300)
+plt.savefig('verification_plots/verification_orientation_angle_map.png', bbox_inches='tight', pad_inches=0.1, dpi=300)
 plt.show()
