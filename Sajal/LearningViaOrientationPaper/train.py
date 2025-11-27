@@ -24,8 +24,8 @@ train_loss_angle_file = open("log_folder/train_angle.txt", "w+")
 val_loss_angle_file = open('log_folder/val_angle.txt', "w+")
 
 
-MODEL_CHOOSEN = "LinkNet34MTL" #"StackHourglassNetMTL"
-multi_scale_pred = False
+MODEL_CHOOSEN = "StackHourglassNetMTL" #"LinkNet34MTL"
+multi_scale_pred = True
 
 num_gpus = torch.cuda.device_count()
 
@@ -113,7 +113,24 @@ def train(epoch):
         outputs, pred_vecmaps = model(inputsBGR)
 
         if multi_scale_pred:
-            pass
+            loss1 = road_loss(outputs[0], util.to_variable(labels[0], requires_grad = False), False)
+            num_stacks = model.module.num_stacks if num_gpus > 1 else model.num_stacks
+
+            for idx in range(num_stacks - 1):
+                loss1 += road_loss(outputs[idx + 1], util.to_variable(labels[0], requires_grad = False), False)
+            for idx, output in enumerate(outputs[-2:]):
+                loss1 += road_loss(output, util.to_variable(labels[idx + 1], requires_grad = False), False)
+            
+            loss2 = angle_loss(pred_vecmaps[0], util.to_variable(vecmap_angles[0], requires_grad = False))
+            for idx in range(num_stacks - 1):
+                loss2 += angle_loss(
+                    pred_vecmaps[idx + 1], util.to_variable(vecmap_angles[0], requires_grad = False)
+                )
+            for idx, pred_vecmap in enumerate(pred_vecmaps[-2:]):
+                loss2 += angle_loss(pred_vecmap, util.to_variable(vecmap_angles[idx + 1], requires_grad = False))
+            
+            outputs = outputs[-1]
+            pred_vecmaps = pred_vecmaps[-1]
         else:
             loss1 = road_loss(outputs, util.to_variable(labels[-1], requires_grad = False), False)
             loss2 = angle_loss(pred_vecmaps, util.to_variable(vecmap_angles[-1], requires_grad = False))
@@ -207,7 +224,26 @@ def val(epoch):
             outputs, pred_vecmaps = model(inputsBGR)
 
             if multi_scale_pred:
-                pass
+                loss1 = road_loss(outputs[0], util.to_variable(labels[0], requires_grad = False), True)
+                num_stacks = model.module.num_stacks if num_gpus > 1 else model.num_stacks
+                for idx in range(num_stacks - 1):
+                    loss1 += road_loss(outputs[idx + 1], util.to_variable(labels[0], requires_grad = False), True)
+                for idx, output in enumerate(outputs[-2:]):
+                    loss1 += road_loss(output, util.to_variable(labels[idx + 1], requires_grad = False), True)
+
+                loss2 = angle_loss(pred_vecmaps[0], util.to_variable(vecmap_angles[0], requires_grad = False))
+                for idx in range(num_stacks - 1):
+                    loss2 += angle_loss(
+                        pred_vecmaps[idx + 1], util.to_variable(vecmap_angles[0], requires_grad = False)
+                    )
+                for idx, pred_vecmap in enumerate(pred_vecmaps[-2:]):
+                    loss2 += angle_loss(
+                        pred_vecmap, util.to_variable(vecmap_angles[idx + 1], requires_grad = False)
+                    )
+
+                outputs = outputs[-1]
+                pred_vecmaps = pred_vecmaps[-1]
+
             else:
                 loss1 = road_loss(outputs, util.to_variable(labels[0], requires_grad = False), True)
                 loss2 = angle_loss(pred_vecmaps, util.to_variable(labels[0], requires_grad = False))

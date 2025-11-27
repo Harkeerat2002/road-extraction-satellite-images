@@ -50,14 +50,16 @@ class RoadDataset(data.Dataset):
         cv2.setNumThreads(0)
 
         self.files = collections.defaultdict(list)
+        file_path = "/content/drive/MyDrive/CS433/training/"
         self.files = {
-            "train":[{"img": "/home/chaurasi/cs433/Project2/data/training/images/satImage_001.png", 'lbl': "/home/chaurasi/cs433/Project2/data/training/groundtruth/satImage_001.png"},
-                      {"img": "/home/chaurasi/cs433/Project2/data/training/images/satImage_002.png", 'lbl': "/home/chaurasi/cs433/Project2/data/training/groundtruth/satImage_002.png"},
-                      {"img": "/home/chaurasi/cs433/Project2/data/training/images/satImage_003.png", 'lbl': "/home/chaurasi/cs433/Project2/data/training/groundtruth/satImage_003.png"}],
+            "train":[{"img": os.path.join(file_path, "images/satImage_001.png"), 'lbl': os.path.join(file_path, "groundtruth/satImage_001.png")},
+                      {"img": os.path.join(file_path, "images/satImage_002.png"), 'lbl': os.path.join(file_path, "groundtruth/satImage_002.png")},
+                      {"img": os.path.join(file_path, "images/satImage_003.png"), 'lbl': os.path.join(file_path, "groundtruth/satImage_003.png")},
+                      {"img": os.path.join(file_path, "images/satImage_006.png"), 'lbl': os.path.join(file_path, "groundtruth/satImage_006.png")}],
 
-            "val": [{"img": "/home/chaurasi/cs433/Project2/data/training/images/satImage_004.png", 'lbl': "/home/chaurasi/cs433/Project2/data/training/groundtruth/satImage_004.png"},
-                      {"img": "/home/chaurasi/cs433/Project2/data/training/images/satImage_005.png", 'lbl': "/home/chaurasi/cs433/Project2/data/training/groundtruth/satImage_005.png"},
-                      {"img": "/home/chaurasi/cs433/Project2/data/training/images/satImage_006.png", 'lbl': "/home/chaurasi/cs433/Project2/data/training/groundtruth/satImage_006.png"}]
+            "val": [{"img": os.path.join(file_path, "images/satImage_004.png"), 'lbl': os.path.join(file_path, "groundtruth/satImage_004.png")},
+                      {"img": os.path.join(file_path, "images/satImage_005.png"), 'lbl': os.path.join(file_path, "groundtruth/satImage_005.png")},
+                      {"img": os.path.join(file_path, "images/satImage_006.png"), 'lbl': os.path.join(file_path, "groundtruth/satImage_006.png")}]
             }
         """
         for f in self.images:

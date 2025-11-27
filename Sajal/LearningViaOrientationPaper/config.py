@@ -4,7 +4,7 @@ config = {
     "task2_classes": 37,
     "task1_weight": 1,
     "task2_weight": 1,
-    "train_batch_size": 2,
+    "train_batch_size": 4,
     "val_batch_size": 4,
     "refinement":3,
     "train_dataset": {
@@ -44,9 +44,9 @@ config = {
             "file": "/data/deepglobe/val_crops.txt",
             "image_suffix": ".jpg",
             "gt_suffix": ".png",
-            "crop_size": 512
+            "crop_size": 400
         },
-        "crop_size": 512,
+        "crop_size": 400,
         "augmentation": False,
         "mean" : "[70.95016901, 71.16398124, 71.30953645]",
         "std" : "[ 34.00087859, 35.18201658, 36.40463264]",
