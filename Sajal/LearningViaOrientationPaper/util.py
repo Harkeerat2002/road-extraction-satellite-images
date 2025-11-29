@@ -20,21 +20,22 @@ def str2bool(v):
         raise argparse.ArgumentTypeError("Boolean value expected.")
 
 
-def ensure_dir(path):
-    if not os.path.exists(path):
-        os.makedirs(path)
-
-
 def setSeed(config):
-    if config["seed"] is None:
-        manualSeed = np.random.randint(1, 10000)
-    else:
-        manualSeed = config["seed"]
+    manualSeed = config["seed"]
     print("Random Seed: ", manualSeed)
-    np.random.seed(manualSeed)
-    torch.manual_seed(manualSeed)
+    # Python random module
     random.seed(manualSeed)
+    # Numpy random module
+    np.random.seed(manualSeed)
+    # Torch random seeds
+    torch.manual_seed(manualSeed)
+    torch.cuda.manual_seed(manualSeed)
     torch.cuda.manual_seed_all(manualSeed)
+    # Set PYTHONHASHSEED environment variable for hash-based operations
+    os.environ["PYTHONHASHSEED"] = str(manualSeed)
+    # Ensure deterministic behavior in cudnn (may slow down your training)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
 
 
 def getParllelNetworkStateDict(state_dict):
