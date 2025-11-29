@@ -13,24 +13,28 @@ from util import binarize
 
 class RoadDataset(data.Dataset):
     def __init__(
-        self, config, dataset_name, seed=7, multi_scale_pred=True, is_train=True
+        self, 
+        config, 
+        dataset_name, 
+        seed, 
+        multi_scale_pred, 
+        is_train, 
+        fold, 
+        n_folds
     ):
         # Seed
         np.random.seed(seed)
         torch.manual_seed(seed)
         random.seed(seed)
 
+        self.fold = fold
+        self.n_folds = n_folds
+
         self.split = "train" if is_train else "val"
         self.config = config
+        
         # paths
-        self.dir = self.config[dataset_name]["dir"]
-
-        self.img_root = os.path.join(self.dir, "images/")
-        self.gt_root = os.path.join(self.dir, "gt/")
-        self.image_list = self.config[dataset_name]["file"]
-
-        # list of all images
-        #self.images = [line.rstrip("\n") for line in open(self.image_list)]
+        self.file_path = self.config[dataset_name]["dir"]
 
         # augmentations
         self.augmentation = self.config["augmentation"]
@@ -50,28 +54,26 @@ class RoadDataset(data.Dataset):
         cv2.setNumThreads(0)
 
         self.files = collections.defaultdict(list)
-        file_path = "/content/drive/MyDrive/CS433/training/"
-        self.files = {
-            "train":[{"img": os.path.join(file_path, "images/satImage_001.png"), 'lbl': os.path.join(file_path, "groundtruth/satImage_001.png")},
-                      {"img": os.path.join(file_path, "images/satImage_002.png"), 'lbl': os.path.join(file_path, "groundtruth/satImage_002.png")},
-                      {"img": os.path.join(file_path, "images/satImage_003.png"), 'lbl': os.path.join(file_path, "groundtruth/satImage_003.png")},
-                      {"img": os.path.join(file_path, "images/satImage_006.png"), 'lbl': os.path.join(file_path, "groundtruth/satImage_006.png")}],
+        
+        # Load all 100 images
+        all_files = []
+        for i in range(1, 101):  # 100 images
+            all_files.append({
+                "img": os.path.join(self.file_path, f"images/satImage_{i:03d}.png"),
+                "lbl": os.path.join(self.file_path, f"groundtruth/satImage_{i:03d}.png")
+            })
 
-            "val": [{"img": os.path.join(file_path, "images/satImage_004.png"), 'lbl': os.path.join(file_path, "groundtruth/satImage_004.png")},
-                      {"img": os.path.join(file_path, "images/satImage_005.png"), 'lbl': os.path.join(file_path, "groundtruth/satImage_005.png")},
-                      {"img": os.path.join(file_path, "images/satImage_006.png"), 'lbl': os.path.join(file_path, "groundtruth/satImage_006.png")}]
-            }
-        """
-        for f in self.images:
-            self.files[self.split].append(
-                {
-                    "img": self.img_root
-                    + f
-                    + self.config[dataset_name]["image_suffix"],
-                    "lbl": self.gt_root + f + self.config[dataset_name]["gt_suffix"],
-                }
-            )
-        """
+        # Split based on fold
+        self.files = collections.defaultdict(list)
+        if fold is not None:
+            fold_size = len(all_files) // n_folds
+            val_start = fold * fold_size
+            val_end = val_start + fold_size if fold < n_folds - 1 else len(all_files)
+            self.files["val"] = all_files[val_start:val_end]
+            self.files["train"] = all_files[:val_start] + all_files[val_end:]
+        else:
+            self.files["train"] = all_files
+            self.files["val"] = []
 
     def __len__(self):
         return len(self.files[self.split])
@@ -162,12 +164,24 @@ class RoadDataset(data.Dataset):
 
 
 class DeepGlobeDataset(RoadDataset):
-    def __init__(self, config, seed=7, multi_scale_pred=True, is_train=True):
+    def __init__(self, 
+                 config, 
+                 seed, 
+                 multi_scale_pred, 
+                 is_train,
+                 fold,
+                 n_folds
+                 ):
+        
         super(DeepGlobeDataset, self).__init__(
-            config, "deepglobe", seed, multi_scale_pred, is_train
-        )
-
-        pass
+            config, 
+            "deepglobe", 
+            seed, 
+            multi_scale_pred, 
+            is_train, 
+            fold, 
+            n_folds
+            )
 
     def __getitem__(self, index):
 

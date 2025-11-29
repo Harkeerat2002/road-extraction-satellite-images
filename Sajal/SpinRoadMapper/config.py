@@ -7,19 +7,14 @@ config = {
     "train_batch_size": 4,
     "val_batch_size": 4,
     "refinement":3,
+    "model_name": "StackHourglassNetMTL",
+    "checkpoint_path": "/content/drive/MyDrive/CS433/checkpoints/deepglobe100/best_model.pth",
+    "test_dir": "/content/drive/MyDrive/CS433/test_set_images/",
+    "output_dir": "/content/drive/MyDrive/CS433/test_set_images/results/",
+    "nfolds": 10,
     "train_dataset": {
-        "spacenet":{
-            "dir": "/data/spacenet/train_crops/",
-            "file": "/data/spacenet/train_crops.txt",
-            "image_suffix": ".png",
-            "gt_suffix": ".png",
-            "crop_size": 256
-        },
         "deepglobe":{
-            "dir": "/data/deepglobe/train_crops/",
-            "file": "/data/deepglobe/train_crops.txt",
-            "image_suffix": ".jpg",
-            "gt_suffix": ".png",
+            "dir": "/content/drive/MyDrive/CS433/training/",
             "crop_size": 256
         },
         "crop_size": 256,
@@ -32,18 +27,8 @@ config = {
         "angle_bin": 10
     },
     "val_dataset": {
-        "spacenet":{
-            "dir": "/data/spacenet/val_crops/",
-            "file": "/data/spacenet/val_crops.txt",
-            "image_suffix": ".png",
-            "gt_suffix": ".png",
-            "crop_size": 650
-        },
         "deepglobe":{
-            "dir": "/data/deepglobe/val_crops/",
-            "file": "/data/deepglobe/val_crops.txt",
-            "image_suffix": ".jpg",
-            "gt_suffix": ".png",
+            "dir": "/content/drive/MyDrive/CS433/training/",
             "crop_size": 400
         },
         "crop_size": 400,
