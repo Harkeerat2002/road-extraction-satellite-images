@@ -13,90 +13,22 @@ from config import config
 from loss import mIoULoss, CrossEntropyLoss2d
 from dataset import DeepGlobeDataset
 
-util.setSeed(config)
-
-experiment_dir = os.path.join("log_folder")
+experiment_dir = config["trainer"]["save_dir"]
 os.makedirs(experiment_dir, exist_ok=True)
 
-train_loss_file = open('log_folder/train.txt', "w+")
-val_loss_file = open('log_folder/val.txt', "w+")
-train_loss_angle_file = open("log_folder/train_angle.txt", "w+")
-val_loss_angle_file = open('log_folder/val_angle.txt', "w+")
+train_loss_file = open(os.path.join(experiment_dir, 'train.txt'), "w+")
+val_loss_file = open(os.path.join(experiment_dir, 'val.txt'), "w+")
+train_loss_angle_file = open(os.path.join(experiment_dir, "train_angle.txt"), "w+")
+val_loss_angle_file = open(os.path.join(experiment_dir, "val_angle.txt"), "w+")
 
-
-MODEL_CHOOSEN = "StackHourglassNetMTL_DGCNv4" 
-
-multi_scale_pred = True
-
-num_gpus = torch.cuda.device_count()
-
-model = StackHourglassNetMTL_DGCNv4(
-    config["task1_classes"], config["task2_classes"]
-)
-model.cuda()
-
-train_loader = data.DataLoader(
-    DeepGlobeDataset(
-        config["train_dataset"],
-        seed=config["seed"],
-        is_train=True,
-        multi_scale_pred=multi_scale_pred,
-    ),
-    batch_size=config["train_batch_size"],
-    num_workers=1,
-    shuffle=True,
-)
-
-val_loader = data.DataLoader(
-    DeepGlobeDataset(
-        config["val_dataset"],
-        seed=config["seed"],
-        is_train=False,
-        multi_scale_pred=multi_scale_pred,
-    ),
-    batch_size=config["val_batch_size"],
-    num_workers=1,
-    shuffle=True,
-)
-
-best_accuracy = 0
-best_miou = 0
-start_epoch = 1
-total_epochs = config["trainer"]["total_epochs"]
-
-optimizer = optim.SGD(
-    model.parameters(), lr=config["optimizer"]["lr"], momentum=0.9, weight_decay=0.0005
-)
-
-util.weights_init(model, manual_seed=config["seed"])
-
-scheduler = MultiStepLR(
-    optimizer,
-    milestones=eval(config["optimizer"]["lr_drop_epoch"]),
-    gamma=config["optimizer"]["lr_step"],
-)
-
-weights = torch.ones(config["task1_classes"]).cuda()
-if config["task1_weight"] < 1:
-    print("Roads are weighted.")
-    weights[0] = 1 - config["task1_weight"]
-    weights[1] = config["task1_weight"]
-
-road_loss = mIoULoss(
-    weight=weights, size_average=True, n_classes=config["task1_classes"]
-).cuda()
-
-weights_angles = torch.ones(config["task2_classes"]).cuda()
-if config["task2_weight"] < 1:
-    print("Road angles are weighted.")
-    weights_angles[-1] = config["task2_weight"]
-
-angle_loss = CrossEntropyLoss2d(
-    weight=weights_angles, size_average=True, ignore_index=255, reduce=True
-).cuda()
-
-
-def train(epoch):
+def train(epoch,
+          model,
+          train_loader,
+          road_loss,
+          angle_loss,
+          optimizer,
+          multi_scale_pred
+          ):
     train_loss_iou = 0
     train_loss_vec = 0
 
@@ -115,7 +47,7 @@ def train(epoch):
 
         if multi_scale_pred:
             loss1 = road_loss(outputs[0], util.to_variable(labels[0], requires_grad = False), False)
-            num_stacks = model.module.num_stacks if num_gpus > 1 else model.num_stacks
+            num_stacks = model.num_stacks
 
             for idx in range(num_stacks - 1):
                 loss1 += road_loss(outputs[idx + 1], util.to_variable(labels[0], requires_grad = False), False)
@@ -157,19 +89,6 @@ def train(epoch):
             config["task2_classes"],
         )
 
-        p_accu, miou, road_iou, fwacc = util.performMetrics(
-            train_loss_file,
-            val_loss_file,
-            epoch,
-            hist,
-            train_loss_iou / (i + 1),
-            train_loss_vec / (i + 1),
-        )
-
-        p_accu_angle, miou_angle, fwacc_angle = util.performAngleMetrics(
-            train_loss_angle_file, val_loss_angle_file, epoch, hist_angles
-        )
-
         torch.autograd.backward([loss1, loss2])
 
         if i % config["trainer"]["iter_size"] == 0 or i == len(train_loader) - 1:
@@ -199,13 +118,22 @@ def train(epoch):
     )
 
     util.performAngleMetrics(
-        train_loss_angle_file, val_loss_angle_file, epoch, hist_angles, write=True
+        train_loss_angle_file, 
+        val_loss_angle_file, 
+        epoch, 
+        hist_angles, 
+        write=True
     )
 
 
-def val(epoch):
-    global best_accuracy
-    global best_miou
+def val(epoch,
+        model,
+        val_loader,
+        road_loss,
+        angle_loss,
+        multi_scale_pred,
+        fold
+        ):
 
     model.eval()
 
@@ -226,7 +154,7 @@ def val(epoch):
 
             if multi_scale_pred:
                 loss1 = road_loss(outputs[0], util.to_variable(labels[0], requires_grad = False), True)
-                num_stacks = model.module.num_stacks if num_gpus > 1 else model.num_stacks
+                num_stacks = model.num_stacks
                 for idx in range(num_stacks - 1):
                     loss1 += road_loss(outputs[idx + 1], util.to_variable(labels[0], requires_grad = False), True)
                 for idx, output in enumerate(outputs[-2:]):
@@ -269,23 +197,9 @@ def val(epoch):
                 config["task2_classes"],
             )
 
-            p_accu, miou, road_iou, fwacc = util.performMetrics(
-                train_loss_file,
-                val_loss_file,
-                epoch,
-                hist,
-                test_loss_iou / (i + 1),
-                test_loss_vec / (i + 1),
-                is_train=False,
-            )
-
-            p_accu_angle, miou_angle, fwacc_angle = util.performAngleMetrics(
-                train_loss_angle_file, val_loss_angle_file, epoch, hist_angles, is_train=False
-            )
-
-            if i % 100 == 0 or i == len(val_loader) - 1:
-                images_path = "{}/images/".format(experiment_dir)
-                util.ensure_dir(images_path)
+            if epoch == config["trainer"]["total_epochs"] and i == len(val_loader) - 1:
+                images_path = os.path.join(experiment_dir, "images", str(fold))
+                os.makedirs(images_path, exist_ok=True)
                 util.savePredictedProb(
                     inputsBGR.data.cpu(),
                     labels[-1].cpu(),
@@ -318,24 +232,148 @@ def val(epoch):
         write=True,
     )
 
-    if miou > best_miou:
-        best_accuracy = accuracy
-        best_miou = miou
-        print("Best = ", best_accuracy, best_miou)
-        #util.save_checkpoint(epoch, test_loss_iou / len(val_loader), model, optimizer, best_accuracy, best_miou, config, experiment_dir)
-
-    return test_loss_iou / len(val_loader)
+    return test_loss_iou / len(val_loader), miou
 
 
 
-for epoch in range(start_epoch, total_epochs + 1):
-    start_time = datetime.now()
-    print("\nTraining Epoch: %d" % epoch)
-    train(epoch)
-    scheduler.step()
-    if epoch % config["trainer"]["test_freq"] == 0:
+def train_fold(config, fold, n_folds=10):
+    print(f"\n{'='*50}")
+    print(f"Training Fold {fold + 1}/{n_folds}")
+    print(f"{'='*50}\n")
+
+    # Set random seed for reproducibility
+    util.setSeed(config)
+
+    multi_scale_pred = True
+
+    model = StackHourglassNetMTL_DGCNv4(
+        config["task1_classes"], config["task2_classes"]
+    )
+    model.cuda()
+
+    util.weights_init(model, manual_seed=config["seed"])
+
+    # Initialize optimizer
+    optimizer = optim.SGD(
+        model.parameters(), lr=config["optimizer"]["lr"], momentum=0.9, weight_decay=0.0005
+    )
+
+    # Initialize LR scheduler
+    scheduler = MultiStepLR(
+        optimizer,
+        milestones=eval(config["optimizer"]["lr_drop_epoch"]),
+        gamma=config["optimizer"]["lr_step"],
+    )
+
+    # Initialize losses
+    weights = torch.ones(config["task1_classes"]).cuda()
+    if config["task1_weight"] < 1:
+        print("Roads are weighted.")
+        weights[0] = 1 - config["task1_weight"]
+        weights[1] = config["task1_weight"]
+
+    road_loss = mIoULoss(
+        weight=weights, size_average=True, n_classes=config["task1_classes"]
+    ).cuda()
+
+    weights_angles = torch.ones(config["task2_classes"]).cuda()
+    if config["task2_weight"] < 1:
+        print("Road angles are weighted.")
+        weights_angles[-1] = config["task2_weight"]
+
+    angle_loss = CrossEntropyLoss2d(
+        weight=weights_angles, size_average=True, ignore_index=255, reduce=True
+    ).cuda()
+
+    # Initialize validation and training variables
+    best_miou = 0
+    start_epoch = 1
+    total_epochs = config["trainer"]["total_epochs"]
+
+    # Initialize data loaders
+    train_loader = data.DataLoader(
+    DeepGlobeDataset(
+        config["train_dataset"],
+        seed=config["seed"],
+        multi_scale_pred=multi_scale_pred,
+        is_train=True,
+        fold=fold,
+        n_folds=n_folds
+    ),
+    batch_size=config["train_batch_size"],
+    num_workers=1,
+    shuffle=True,
+    )
+
+    val_loader = data.DataLoader(
+    DeepGlobeDataset(
+        config["val_dataset"],
+        seed=config["seed"],
+        multi_scale_pred=multi_scale_pred,
+        is_train=False,
+        fold=fold,
+        n_folds=n_folds
+    ),
+    batch_size=config["val_batch_size"],
+    num_workers=1,
+    shuffle=False,
+    )
+
+    print(f"Fold {fold + 1}: Train size = {len(train_loader.dataset)}, Val size = {len(val_loader.dataset)}")
+
+    # Start training
+    for epoch in range(start_epoch, total_epochs + 1):
+        print("\nTraining Epoch: %d" % epoch)
+        train(epoch,
+              model,
+              train_loader,
+              road_loss,
+              angle_loss,
+              optimizer,
+              multi_scale_pred
+              )
+
         print("\nTesting Epoch: %d" % epoch)
-        val_loss = val(epoch)
+        _, miou = val(epoch,
+                        model,
+                        val_loader,
+                        road_loss,
+                        angle_loss,
+                        multi_scale_pred,
+                        fold
+                        )
+        print(f"Epoch {epoch} completed, mIOU: {miou:.4f}")
+        
+        scheduler.step()
+        
+        if miou > best_miou:
+            best_miou = miou
 
-    end_time = datetime.now()
-    print("Time Elapsed for epoch => {1}".format(epoch, end_time - start_time))
+    print(f"Fold {fold + 1}, BestMIOU {best_miou} Training Completed.\n{'='*50}\n")
+    return best_miou
+    
+
+def cross_validation():
+    """Perform k-fold cross-validation"""
+
+    n_folds = config['nfolds']
+    
+    fold_results = []
+    
+    for fold in range(n_folds):
+        result = train_fold(config, fold, n_folds)
+        fold_results.append(result)
+    
+    # Calculate average metrics
+    avg_val_miou = np.mean(fold_results)
+    std_val_miou = np.std(fold_results)
+    
+    print(f"\n{'='*50}")
+    print(f"Cross-Validation Results ({n_folds} folds)")
+    print(f"{'='*50}")
+    print(f"Average Validation mIOU: {avg_val_miou:.4f} ± {std_val_miou:.4f}")
+    print(f"{'='*50}\n")
+
+
+if __name__ == "__main__":
+    cross_validation()
