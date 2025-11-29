@@ -8,6 +8,9 @@ config = {
     "val_batch_size": 4,
     "refinement":3,
     "model_name": "StackHourglassNetMTL",
+    "checkpoint_path": "/content/drive/MyDrive/CS433/checkpoints/deepglobe100/best_model.pth",
+    "test_dir": "/content/drive/MyDrive/CS433/test_set_images/",
+    "output_dir": "/content/drive/MyDrive/CS433/test_set_images/results/",
     "nfolds": 10,
     "train_dataset": {
         "deepglobe":{
