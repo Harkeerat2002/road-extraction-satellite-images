@@ -100,4 +100,4 @@ if __name__ == "__main__":
     model_file = os.path.join(config.MODEL_SAVE_DIR, "unet_full_best.keras")
 
     # Change index to see different images
-    visualize_prediction(model_file, image_index=90)
+    visualize_prediction(model_file, image_index=1)
