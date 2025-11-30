@@ -12,8 +12,9 @@ import util
 from config import config
 from loss import mIoULoss, CrossEntropyLoss2d
 from dataset import DeepGlobeDataset
+import argparse
 
-experiment_dir = config["trainer"]["save_dir"]
+experiment_dir = config["trainer"]["logging_dir"]
 os.makedirs(experiment_dir, exist_ok=True)
 
 train_loss_file = open(os.path.join(experiment_dir, 'train.txt'), "w+")
@@ -236,7 +237,7 @@ def val(epoch,
 
 
 
-def train_fold(config, fold, n_folds=10):
+def train_fold(config, fold, n_folds):
     print(f"\n{'='*50}")
     print(f"Training Fold {fold + 1}/{n_folds}")
     print(f"{'='*50}\n")
@@ -311,21 +312,25 @@ def train_fold(config, fold, n_folds=10):
     shuffle=True,
     )
 
-    val_loader = data.DataLoader(
-    DeepGlobeDataset(
-        config["val_dataset"],
-        seed=config["seed"],
-        multi_scale_pred=multi_scale_pred,
-        is_train=False,
-        fold=fold,
-        n_folds=n_folds
-    ),
-    batch_size=config["val_batch_size"],
-    num_workers=1,
-    shuffle=False,
-    )
-
-    print(f"Fold {fold + 1}: Train size = {len(train_loader.dataset)}, Val size = {len(val_loader.dataset)}")
+    if n_folds != 1:
+        val_loader = data.DataLoader(
+        DeepGlobeDataset(
+            config["val_dataset"],
+            seed=config["seed"],
+            multi_scale_pred=multi_scale_pred,
+            is_train=False,
+            fold=fold,
+            n_folds=n_folds
+        ),
+        batch_size=config["val_batch_size"],
+        num_workers=1,
+        shuffle=False,
+        )
+        print(f"Fold {fold + 1}: Train size = {len(train_loader.dataset)}, Val size = {len(val_loader.dataset)}")
+    else:
+        print("Training on the entire dataset without cross-validation.")
+        print(f"Fold {fold + 1}: Train size = {len(train_loader.dataset)}")
+        
 
     # Start training
     for epoch in range(start_epoch, total_epochs + 1):
@@ -339,23 +344,31 @@ def train_fold(config, fold, n_folds=10):
               multi_scale_pred
               )
 
-        print("\nTesting Epoch: %d" % epoch)
-        _, miou = val(epoch,
-                        model,
-                        val_loader,
-                        road_loss,
-                        angle_loss,
-                        multi_scale_pred,
-                        fold
-                        )
-        print(f"Epoch {epoch} completed, mIOU: {miou:.4f}")
+        if n_folds != 1:
+            print("\nTesting Epoch: %d" % epoch)
+            
+            _, miou = val(epoch,
+                            model,
+                            val_loader,
+                            road_loss,
+                            angle_loss,
+                            multi_scale_pred,
+                            fold
+                            )
+            print(f"Epoch {epoch} completed, mIOU: {miou:.4f}")
+
+            if miou > best_miou:
+                best_miou = miou
         
         scheduler.step()
-        
-        if miou > best_miou:
-            best_miou = miou
 
-    print(f"Fold {fold + 1}, BestMIOU {best_miou} Training Completed.\n{'='*50}\n")
+    if n_folds != 1:
+        print(f"Fold {fold + 1}, BestMIOU {best_miou} Training Completed.\n{'='*50}\n")
+    else:   
+        print("Saving final model...")
+        torch.save(model.state_dict(), config["checkpoint_path"])
+        print(f"Model saved to {config['checkpoint_path']}")
+
     return best_miou
     
 
@@ -380,6 +393,17 @@ def cross_validation():
     print(f"Average Validation mIOU: {avg_val_miou:.4f} ± {std_val_miou:.4f}")
     print(f"{'='*50}\n")
 
-
+def train_single():
+    """Train on the entire dataset without cross-validation"""
+    os.makedirs(os.path.dirname(config["checkpoint_path"]), exist_ok=True)
+    train_fold(config, fold=0, n_folds=1)
+    
 if __name__ == "__main__":
-    cross_validation()
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--crossval', type=int, default=1)
+    args = parser.parse_args()
+
+    if args.crossval == 0:
+        train_single()
+    else:   
+        cross_validation()

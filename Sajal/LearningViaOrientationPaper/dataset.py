@@ -65,7 +65,7 @@ class RoadDataset(data.Dataset):
 
         # Split based on fold
         self.files = collections.defaultdict(list)
-        if fold is not None:
+        if n_folds != 1:
             fold_size = len(all_files) // n_folds
             val_start = fold * fold_size
             val_end = val_start + fold_size if fold < n_folds - 1 else len(all_files)

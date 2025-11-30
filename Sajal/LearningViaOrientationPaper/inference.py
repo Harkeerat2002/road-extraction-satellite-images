@@ -2,25 +2,21 @@ import torch
 import numpy as np
 from PIL import Image
 import os
-from pathlib import Path
-import argparse
-from torchvision import transforms
-import torch.nn.functional as F
 from config import config
 from models import MODELS
 from dataset import RoadDataset
 import cv2
-from config import config
 
 class InferenceEngine(RoadDataset):
     def __init__(self):
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
+        self.config = config
 
-        self.crop_size = config["train_dataset"]["deepglobe"]["crop_size"]  # 256
+        self.crop_size = self.config["train_dataset"]["deepglobe"]["crop_size"]  # 256
         self.stride = self.crop_size // 2  # 128 for 50% overlap
         
         # Load model
-        self.model_path = config['checkpoint_path']
+        self.model_path = self.config['checkpoint_path']
         self.model = self.load_model(self.model_path)
         self.model.eval()
 
@@ -28,15 +24,15 @@ class InferenceEngine(RoadDataset):
         cv2.setNumThreads(0)
 
         # preprocess
-        self.angle_theta = self.config["angle_theta"]
-        self.mean_bgr = np.array(eval(self.config["mean"]))
-        self.deviation_bgr = np.array(eval(self.config["std"]))
-        self.normalize_type = self.config["normalize_type"]
+        self.angle_theta = self.config["train_dataset"]["angle_theta"]
+        self.mean_bgr = np.array(eval(self.config["train_dataset"]["mean"]))
+        self.deviation_bgr = np.array(eval(self.config["train_dataset"]["std"]))
+        self.normalize_type = self.config["train_dataset"]["normalize_type"]
 
         # Load all test images path
         self.files = []
         for i in range(1, 51):  # Assuming 50 test images
-            img_path = os.path.join(config["test_dir"], f"test_{i}", f"test_{i}.png")
+            img_path = os.path.join(self.config["test_dir"], f"test_{i}", f"test_{i}.png")
             self.files.append(img_path)
 
     def reshape(self, image):
@@ -64,7 +60,7 @@ class InferenceEngine(RoadDataset):
     def load_model(self, model_path):
         """Load the pretrained model"""
         # Import your model architecture here
-        MODEL_CHOOSEN = config["model_name"] #"StackHourglassNetMTL" or "LinkNet34MTL"
+        MODEL_CHOOSEN = self.config["model_name"] #"StackHourglassNetMTL" or "LinkNet34MTL"
 
         if MODEL_CHOOSEN == "StackHourglassNetMTL":
             self.multi_scale_pred = True
@@ -72,12 +68,12 @@ class InferenceEngine(RoadDataset):
             self.multi_scale_pred = False
 
         model = MODELS[MODEL_CHOOSEN](
-        config["task1_classes"], config["task2_classes"]
+        self.config["task1_classes"], self.config["task2_classes"]
         )
         model.cuda()
         
         checkpoint = torch.load(model_path, map_location=self.device)
-        model.load_state_dict(checkpoint['model_state_dict'])
+        model.load_state_dict(checkpoint)
         model = model.to(self.device)
         return model
     
@@ -114,7 +110,7 @@ class InferenceEngine(RoadDataset):
         weight = self.create_weight_matrix(patch_size)
         weight = weight.to(self.device)
         
-        for (pred_seg, pred_ori), (y, x) in zip(predictions, positions):
+        for pred_seg, (y, x) in zip(predictions, positions):
             y_end = y + patch_size
             x_end = x + patch_size
             
@@ -161,6 +157,7 @@ class InferenceEngine(RoadDataset):
                 pred_vecmaps = pred_vecmaps[-1]
             
             # Apply softmax/sigmoid
+            outputs = outputs[0, :, :, :]
             seg_pred = torch.sigmoid(outputs)  # [2, 256, 256]
             
             predictions.append(seg_pred)
