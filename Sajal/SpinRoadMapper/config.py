@@ -8,9 +8,9 @@ config = {
     "val_batch_size": 4,
     "refinement":3,
     "model_name": "StackHourglassNetMTL",
-    "checkpoint_path": "/content/drive/MyDrive/CS433/checkpoints/deepglobe100/best_model.pth",
+    "checkpoint_path": "/content/checkpoints/final_model.pth",
     "test_dir": "/content/drive/MyDrive/CS433/test_set_images/",
-    "output_dir": "/content/drive/MyDrive/CS433/test_set_images/results/",
+    "output_dir": "/content/results/",
     "nfolds": 10,
     "train_dataset": {
         "deepglobe":{
@@ -48,7 +48,7 @@ config = {
     },
     "trainer": {
         "total_epochs": 120,
-        "save_dir": "/ssd_scratch/cvit/anil.k/exp/deepglobe100/",
+        "logging_dir": "/content/logs/",
         "iter_size": 1,
         "test_freq": 1
     }

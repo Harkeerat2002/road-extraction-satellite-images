@@ -4,7 +4,7 @@ import math
 
 import torch.nn as nn
 import torch.nn.functional as F
-from model.SPIN import spin
+from SPIN import spin
 
 affine_par = True
 
