@@ -252,7 +252,7 @@ def train_fold(config, fold, n_folds):
     )
     model.cuda()
 
-    util.weights_init(model, manual_seed=config["seed"])
+    util.weights_init(model)
 
     # Initialize optimizer
     optimizer = optim.SGD(

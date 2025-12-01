@@ -108,9 +108,6 @@ class RoadDataset(data.Dataset):
                 interpolation=cv2.INTER_LINEAR,
             )
 
-        if self.split == "train" and index == len(self.files[self.split]) - 1:
-            np.random.shuffle(self.files[self.split])
-
         h, w, c = image.shape
         if self.augmentation == 1:
             flip = np.random.choice(2) * 2 - 1

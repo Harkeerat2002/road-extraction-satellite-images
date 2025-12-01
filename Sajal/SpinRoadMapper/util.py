@@ -52,11 +52,7 @@ def to_variable(tensor, requires_grad=True):
     return Variable(tensor.long().cuda(), requires_grad=requires_grad)
 
 
-def weights_init(model, manual_seed=7):
-    np.random.seed(manual_seed)
-    torch.manual_seed(manual_seed)
-    random.seed(manual_seed)
-    torch.cuda.manual_seed_all(manual_seed)
+def weights_init(model):
     for m in model.modules():
         if isinstance(m, nn.Conv2d) or isinstance(m, nn.ConvTranspose2d):
             n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
@@ -66,11 +62,7 @@ def weights_init(model, manual_seed=7):
             m.bias.data.zero_()
 
 
-def weights_normal_init(model, manual_seed=7):
-    np.random.seed(manual_seed)
-    torch.manual_seed(manual_seed)
-    random.seed(manual_seed)
-    torch.cuda.manual_seed_all(manual_seed)
+def weights_normal_init(model):
     for m in model.modules():
         if isinstance(m, nn.Conv2d) or isinstance(m, nn.ConvTranspose2d):
             m.weight.data.normal_(0.0, 0.02)
@@ -316,3 +308,31 @@ def binarize(img, threshold=128):
         np.ndarray: Binarized image.
     """
     return np.where(img >= threshold, 255.0, 0.0)
+
+def compute_dataset_mean_std():
+    folder = "/content/drive/MyDrive/CS433/training/images/"
+
+    sum_c = np.zeros(3, dtype=np.float64)
+    sum_sq_c = np.zeros(3, dtype=np.float64)
+    count = 0
+
+    for filename in os.listdir(folder):
+        img = cv2.imread(os.path.join(folder, filename))
+
+        # Normalize to [0,1] or keep in [0,255] depending on your convention
+        img = img.astype(np.float32)
+
+        # Compute mean and std for this image
+        sum_c += img.reshape(-1, 3).sum(axis=0)
+        sum_sq_c += (img.reshape(-1, 3) ** 2).sum(axis=0)
+        num_pixels = img.shape[0] * img.shape[1]
+        count += num_pixels
+
+    # Per-channel mean
+    mean = sum_c / count
+
+    # Per-channel std
+    std = np.sqrt(sum_sq_c / count - mean**2)
+
+    print("Mean (R, G, B):", mean)
+    print("Std  (R, G, B):", std)
