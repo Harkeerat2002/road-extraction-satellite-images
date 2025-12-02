@@ -298,6 +298,9 @@ def train_fold(config, fold, n_folds):
     total_epochs = config["trainer"]["total_epochs"]
 
     # Initialize data loaders
+    g = torch.Generator()
+    g.manual_seed(config["seed"])
+
     train_loader = data.DataLoader(
     DeepGlobeDataset(
         config["train_dataset"],
@@ -308,8 +311,8 @@ def train_fold(config, fold, n_folds):
         n_folds=n_folds
     ),
     batch_size=config["train_batch_size"],
-    num_workers=1,
     shuffle=True,
+    generator=g,
     )
 
     if n_folds != 1:
@@ -323,7 +326,6 @@ def train_fold(config, fold, n_folds):
             n_folds=n_folds
         ),
         batch_size=config["val_batch_size"],
-        num_workers=1,
         shuffle=False,
         )
         print(f"Fold {fold + 1}: Train size = {len(train_loader.dataset)}, Val size = {len(val_loader.dataset)}")

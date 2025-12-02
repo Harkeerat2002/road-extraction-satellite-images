@@ -36,6 +36,7 @@ def setSeed(config):
     # Ensure deterministic behavior in cudnn (may slow down your training)
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
+    torch.use_deterministic_algorithms(True, warn_only=True)
 
 
 def getParllelNetworkStateDict(state_dict):
