@@ -2,18 +2,19 @@ import torch
 import numpy as np
 from PIL import Image
 import os
-from config import config
+from configs import configs
 from models import MODELS
 from dataset import RoadDataset
 import cv2
+import argparse
 
 class InferenceEngine(RoadDataset):
-    def __init__(self):
+    def __init__(self, config):
         self.device = 'cuda' if torch.cuda.is_available() else 'cpu'
         self.config = config
 
         self.crop_size = self.config["train_dataset"]["deepglobe"]["crop_size"]  # 256
-        self.stride = self.crop_size // 2  # 128 for 50% overlap
+        self.stride = self.config["train_dataset"]["deepglobe"]["stride"] # 128 for 50% overlap
         
         # Load model
         self.model_path = self.config['checkpoint_path']
@@ -168,7 +169,7 @@ class InferenceEngine(RoadDataset):
         )
         
         # Post-process
-        seg_mask = (final_seg[1] > self.config['train_dataset']['thresh']).cpu().numpy()
+        seg_mask = (final_seg[1] > self.config['classification_threshold']).cpu().numpy()
 
         return seg_mask, final_seg
     
@@ -187,10 +188,10 @@ class InferenceEngine(RoadDataset):
             )
 
 
-def main():
+def main(config):
     
     # Create inference engine
-    engine = InferenceEngine()
+    engine = InferenceEngine(config)
     
     # Run inference
     engine.predict_test_set()
@@ -199,4 +200,10 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--config', type=int, default=0)
+    args = parser.parse_args()
+    config_number = args.config
+    config = configs[config_number]
+
+    main(config)

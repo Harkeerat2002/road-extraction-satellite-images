@@ -9,18 +9,10 @@ from torch.autograd import Variable
 from torch.optim.lr_scheduler import MultiStepLR
 import torch.nn.functional as F
 import util
-from config import config
+from configs import configs
 from loss import mIoULoss, CrossEntropyLoss2d
 from dataset import DeepGlobeDataset
 import argparse
-
-experiment_dir = config["trainer"]["logging_dir"]
-os.makedirs(experiment_dir, exist_ok=True)
-
-train_loss_file = open(os.path.join(experiment_dir, 'train.txt'), "w+")
-val_loss_file = open(os.path.join(experiment_dir, 'val.txt'), "w+")
-train_loss_angle_file = open(os.path.join(experiment_dir, "train_angle.txt"), "w+")
-val_loss_angle_file = open(os.path.join(experiment_dir, "val_angle.txt"), "w+")
 
 def train(epoch,
           model,
@@ -28,7 +20,8 @@ def train(epoch,
           road_loss,
           angle_loss,
           optimizer,
-          multi_scale_pred
+          multi_scale_pred,
+          config
           ):
     train_loss_iou = 0
     train_loss_vec = 0
@@ -133,7 +126,8 @@ def val(epoch,
         road_loss,
         angle_loss,
         multi_scale_pred,
-        fold
+        fold,
+        config
         ):
 
     model.eval()
@@ -256,7 +250,10 @@ def train_fold(config, fold, n_folds):
 
     # Initialize optimizer
     optimizer = optim.SGD(
-        model.parameters(), lr=config["optimizer"]["lr"], momentum=0.9, weight_decay=0.0005
+        model.parameters(), 
+        lr=config["optimizer"]["lr"], 
+        momentum=config["optimizer"]["momentum"], 
+        weight_decay=config["optimizer"]["weight_decay"]
     )
 
     # Initialize LR scheduler
@@ -337,7 +334,8 @@ def train_fold(config, fold, n_folds):
               road_loss,
               angle_loss,
               optimizer,
-              multi_scale_pred
+              multi_scale_pred,
+              config
               )
 
         if n_folds != 1:
@@ -349,7 +347,8 @@ def train_fold(config, fold, n_folds):
                             road_loss,
                             angle_loss,
                             multi_scale_pred,
-                            fold
+                            fold,
+                            config
                             )
             print(f"Epoch {epoch} completed, mIOU: {miou:.4f}")
 
@@ -368,7 +367,7 @@ def train_fold(config, fold, n_folds):
     return best_miou
     
 
-def cross_validation():
+def cross_validation(config):
     """Perform k-fold cross-validation"""
 
     n_folds = config['nfolds']
@@ -389,7 +388,7 @@ def cross_validation():
     print(f"Average Validation mIOU: {avg_val_miou:.4f} ± {std_val_miou:.4f}")
     print(f"{'='*50}\n")
 
-def train_single():
+def train_single(config):
     """Train on the entire dataset without cross-validation"""
     os.makedirs(os.path.dirname(config["checkpoint_path"]), exist_ok=True)
     train_fold(config, fold=0, n_folds=1)
@@ -397,9 +396,20 @@ def train_single():
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--crossval', type=int, default=1)
+    parser.add_argument('--config', type=int, default=0)
     args = parser.parse_args()
+    config_number = args.config
+    config = configs[config_number]
+
+    experiment_dir = config["trainer"]["logging_dir"]
+    os.makedirs(experiment_dir, exist_ok=True)
+
+    train_loss_file = open(os.path.join(experiment_dir, 'train.txt'), "w+")
+    val_loss_file = open(os.path.join(experiment_dir, 'val.txt'), "w+")
+    train_loss_angle_file = open(os.path.join(experiment_dir, "train_angle.txt"), "w+")
+    val_loss_angle_file = open(os.path.join(experiment_dir, "val_angle.txt"), "w+")
 
     if args.crossval == 0:
-        train_single()
+        train_single(config)
     else:   
-        cross_validation()
+        cross_validation(config)

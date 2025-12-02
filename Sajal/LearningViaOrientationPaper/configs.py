@@ -1,4 +1,5 @@
-config = {
+configs = [
+    {
     "seed": 7,
     "task1_classes": 2,
     "task2_classes": 37,
@@ -11,10 +12,12 @@ config = {
     "test_dir": "/content/drive/MyDrive/CS433/test_set_images/",
     "output_dir": "/content/results/",
     "nfolds": 5,
+    "classification_threshold": 0.5,
     "train_dataset": {
         "deepglobe":{
             "dir": "/content/drive/MyDrive/CS433/training/",
-            "crop_size": 256
+            "crop_size": 256,
+            "stride": 128,
         },
         "augmentation": True,
         "mean" : "[75.42847031, 84.17389662, 84.91022512]",
@@ -38,6 +41,8 @@ config = {
     "optimizer": {
         "lr": 0.01,
         "lr_step": 0.1,
+        "momentum": 0.9,
+        "weight_decay": 0.0005,
         "lr_drop_epoch": "[60,90,110]"
     },
     "trainer": {
@@ -47,3 +52,4 @@ config = {
         "test_freq": 1
     }
 }
+]
