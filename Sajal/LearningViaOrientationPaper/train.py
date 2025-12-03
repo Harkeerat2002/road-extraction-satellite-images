@@ -290,7 +290,7 @@ def train_fold(config, fold, n_folds):
     ).cuda()
 
     # Initialize validation and training variables
-    best_miou = 0
+    miou = 0
     start_epoch = 1
     total_epochs = config["trainer"]["total_epochs"]
 
@@ -357,20 +357,17 @@ def train_fold(config, fold, n_folds):
                             config
                             )
             print(f"Epoch {epoch} completed, mIOU: {miou:.4f}")
-
-            if miou > best_miou:
-                best_miou = miou
         
         scheduler.step()
 
     if n_folds != 1:
-        print(f"Fold {fold + 1}, BestMIOU {best_miou} Training Completed.\n{'='*50}\n")
+        print(f"Fold {fold + 1}, LastMIOU {miou} Training Completed.\n{'='*50}\n")
     else:   
         print("Saving final model...")
         torch.save(model.state_dict(), config["checkpoint_path"])
         print(f"Model saved to {config['checkpoint_path']}")
 
-    return best_miou
+    return miou
     
 
 def cross_validation(config):

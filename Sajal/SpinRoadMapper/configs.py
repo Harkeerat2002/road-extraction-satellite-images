@@ -46,7 +46,7 @@ configs = [
         "lr_drop_epoch": "[60,90,110]"
     },
     "trainer": {
-        "total_epochs": 120,
+        "total_epochs": 60,
         "logging_dir": "/content/logs/",
         "iter_size": 1,
         "test_freq": 1
