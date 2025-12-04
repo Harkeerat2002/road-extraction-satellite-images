@@ -9,6 +9,7 @@ import torch
 from torch.utils import data
 from orientation_utils import getVectorMapsAngles, getKeypoints
 from util import binarize
+import albumentations as A 
 
 
 class RoadDataset(data.Dataset):
@@ -53,6 +54,9 @@ class RoadDataset(data.Dataset):
         # to avoid Deadloack  between CV Threads and Pytorch Threads caused in resizing
         cv2.setNumThreads(0)
 
+        # Initialize Albumentations Transforms
+        self.transforms = self.define_transforms()
+
         self.files = collections.defaultdict(list)
         
         # Load all 100 images
@@ -77,47 +81,70 @@ class RoadDataset(data.Dataset):
 
     def __len__(self):
         return len(self.files[self.split])
+    
+    def define_transforms(self):
+        """
+        Defines the Albumentations transformation pipeline.
+        """
+
+        transforms_list = []
+        h, w = self.crop_size
+
+        if self.split == "train":
+            # 1. Random Crop
+            transforms_list.append(A.RandomCrop(height=h, width=w))
+
+            # 2. Augmentations (Flip, Rotate, etc.)
+            if self.augmentation == 1:
+                transforms_list.extend([
+                    A.HorizontalFlip(p=0.5),
+                    A.VerticalFlip(p=0.5),
+                    A.RandomRotate90(p=0.5),
+                    A.ShiftScaleRotate(shift_limit=0.0625, scale_limit=0.1, rotate_limit=45, p=0.5, border_mode=cv2.BORDER_REFLECT_101),
+                    A.CoarseDropout(num_holes_range = (3,6), hole_height_range = (8,15), hole_width_range = (8,15), p = 0.2),
+                    A.ElasticTransform(p=0.2),
+                ])
+        else:
+            # For validation, strictly resize to crop_size (or CenterCrop if preferred)
+            transforms_list.append(A.Resize(height=h, width=w))
+
+        return A.Compose(transforms_list)
 
     def getRoadData(self, index):
 
         image_dict = self.files[self.split][index]
         # read each image in list
         if os.path.isfile(image_dict["img"]):
-            image = cv2.imread(image_dict["img"]).astype(np.float32)
+            image = cv2.imread(image_dict["img"])
         else:
             print("ERROR: couldn't find image -> ", image_dict["img"])
 
         if os.path.isfile(image_dict["lbl"]):
-            gt = cv2.imread(image_dict["lbl"], 0).astype(np.float32)
-            gt = binarize(gt, 128).astype(np.float32)
+            gt = cv2.imread(image_dict["lbl"], 0)
+            gt = binarize(gt, 128).astype(np.uint8)
 
         else:
             print("ERROR: couldn't find image -> ", image_dict["lbl"])
 
-        if self.split == "train":
-            image, gt = self.random_crop(image, gt, self.crop_size)
-        else:
-            image = cv2.resize(
-                image,
-                (self.crop_size[0], self.crop_size[1]),
-                interpolation=cv2.INTER_LINEAR,
-            )
-            gt = cv2.resize(
-                gt,
-                (self.crop_size[0], self.crop_size[1]),
-                interpolation=cv2.INTER_LINEAR,
-            )
+        # Geometrical Augmentation
+        augmented = self.transforms(image=image, mask=gt)
+        image = augmented['image']
+        gt = augmented['mask']
 
-        h, w, c = image.shape
-        if self.augmentation == 1:
-            flip = np.random.choice(2) * 2 - 1
-            image = np.ascontiguousarray(image[:, ::flip, :])
-            gt = np.ascontiguousarray(gt[:, ::flip])
-            rotation = np.random.randint(4) * 90
-            M = cv2.getRotationMatrix2D((w / 2, h / 2), rotation, 1)
-            image = cv2.warpAffine(image, M, (w, h))
-            gt = cv2.warpAffine(gt, M, (w, h))
+        # Color Augmentation (only for training)
+        if self.split == "train" and self.augmentation == 1:
+            colour_transforms = A.Compose(
+            [
+                A.ColorJitter(brightness=0.4, contrast = 0.4, hue = 0.2, p = 0.5, ),
+            ]   
+            )
+            augmentations = colour_transforms(image = image)
+            image = augmentations["image"]
 
+        image = image.astype(np.float32)
+        gt = gt.astype(np.float32)
+
+        # Normalize and reshape
         image = self.reshape(image)
         image = torch.from_numpy(np.array(image))
 
@@ -145,19 +172,6 @@ class RoadDataset(data.Dataset):
 
         image = image.transpose(2, 0, 1)
         return image
-
-    def random_crop(self, image, gt, size):
-
-        w, h, _ = image.shape
-        crop_h, crop_w = size
-
-        start_x = np.random.randint(0, w - crop_w)
-        start_y = np.random.randint(0, h - crop_h)
-
-        image = image[start_x : start_x + crop_w, start_y : start_y + crop_h, :]
-        gt = gt[start_x : start_x + crop_w, start_y : start_y + crop_h]
-
-        return image, gt
 
 
 class DeepGlobeDataset(RoadDataset):
@@ -196,6 +210,7 @@ class DeepGlobeDataset(RoadDataset):
 
         for i, val in enumerate(scale):
             if val != 1:
+                # Nearest neighbor is safest for masks to preserve edges.
                 gt_ = cv2.resize(
                     gt,
                     (int(math.ceil(h / (val * 1.0))), int(math.ceil(w / (val * 1.0)))),
@@ -205,6 +220,7 @@ class DeepGlobeDataset(RoadDataset):
                 gt_ = gt
 
             gt_orig = np.copy(gt_)
+            # Normalize GT to 0-1 for the loss function
             gt_orig /= 255.0
             labels.append(gt_orig)
 
