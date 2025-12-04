@@ -55,7 +55,14 @@ class RoadDataset(data.Dataset):
         cv2.setNumThreads(0)
 
         # Initialize Albumentations Transforms
-        self.transforms = self.define_transforms()
+        self.transforms = self.define_transforms(seed)
+
+        self.colour_transforms = A.Compose(
+            [
+                A.ColorJitter(brightness=0.4, contrast = 0.4, hue = 0.2, p = 0.5, ),
+            ],
+            seed = seed
+            )
 
         self.files = collections.defaultdict(list)
         
@@ -82,7 +89,7 @@ class RoadDataset(data.Dataset):
     def __len__(self):
         return len(self.files[self.split])
     
-    def define_transforms(self):
+    def define_transforms(self, seed):
         """
         Defines the Albumentations transformation pipeline.
         """
@@ -108,7 +115,7 @@ class RoadDataset(data.Dataset):
             # For validation, strictly resize to crop_size (or CenterCrop if preferred)
             transforms_list.append(A.Resize(height=h, width=w))
 
-        return A.Compose(transforms_list)
+        return A.Compose(transforms_list, seed=seed)
 
     def getRoadData(self, index):
 
@@ -133,12 +140,7 @@ class RoadDataset(data.Dataset):
 
         # Color Augmentation (only for training)
         if self.split == "train" and self.augmentation == 1:
-            colour_transforms = A.Compose(
-            [
-                A.ColorJitter(brightness=0.4, contrast = 0.4, hue = 0.2, p = 0.5, ),
-            ]   
-            )
-            augmentations = colour_transforms(image = image)
+            augmentations = self.colour_transforms(image = image)
             image = augmentations["image"]
 
         image = image.astype(np.float32)
