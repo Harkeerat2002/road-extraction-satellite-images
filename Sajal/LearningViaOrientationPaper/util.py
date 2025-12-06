@@ -124,6 +124,11 @@ def performMetrics(
     freq = hist.sum(1) / hist.sum()
     fwavacc = (freq[freq > 0] * mean_iou[freq > 0]).sum()
 
+    TP = hist[1, 1]
+    FP = hist[0, 1]
+    FN = hist[1, 0]
+    f1_class1 = (2 * TP) / (2 * TP + FP + FN + 1e-12)
+
     if write and is_train:
         train_loss_file.write(
             "[%d], Loss:%.5f, Loss(VecMap):%.5f, Pixel Accuracy:%.3f, Mean Accuracy:%.3f, Mean IoU:%.3f, Class IoU:[%.5f/%.5f], Freq.Weighted Accuray:%.3f  \n"
@@ -160,6 +165,7 @@ def performMetrics(
         100 * np.nanmean(mean_iou),
         100 * mean_iou[1],
         100 * fwavacc,
+        100 * f1_class1,
     )
 
 

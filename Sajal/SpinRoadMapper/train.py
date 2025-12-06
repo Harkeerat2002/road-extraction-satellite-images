@@ -207,7 +207,7 @@ def val(epoch,
 
             del inputsBGR, labels, predicted, outputs, pred_vecmaps, predicted_angle
 
-    accuracy, miou, road_iou, fwacc = util.performMetrics(
+    accuracy, miou, road_iou, fwacc, f1class1 = util.performMetrics(
         train_loss_file,
         val_loss_file,
         epoch,
@@ -227,7 +227,7 @@ def val(epoch,
         write=True,
     )
 
-    return test_loss_iou / len(val_loader), miou
+    return test_loss_iou / len(val_loader), f1class1
 
 
 
@@ -284,7 +284,7 @@ def train_fold(config, fold, n_folds):
     ).cuda()
 
     # Initialize validation and training variables
-    miou = 0
+    f1score = 0
     start_epoch = 1
     total_epochs = config["trainer"]["total_epochs"]
 
@@ -341,7 +341,7 @@ def train_fold(config, fold, n_folds):
         if n_folds != 1:
             print("\nTesting Epoch: %d" % epoch)
             
-            _, miou = val(epoch,
+            _, f1score = val(epoch,
                             model,
                             val_loader,
                             road_loss,
@@ -350,18 +350,18 @@ def train_fold(config, fold, n_folds):
                             fold,
                             config
                             )
-            print(f"Epoch {epoch} completed, mIOU: {miou:.4f}")
+            print(f"Epoch {epoch} completed, F1 Score: {f1score:.4f}")
         
         scheduler.step()
 
     if n_folds != 1:
-        print(f"Fold {fold + 1}, LastMIOU {miou} Training Completed.\n{'='*50}\n")
+        print(f"Fold {fold + 1}, LastF1Score {f1score} Training Completed.\n{'='*50}\n")
     else:   
         print("Saving final model...")
         torch.save(model.state_dict(), config["checkpoint_path"])
         print(f"Model saved to {config['checkpoint_path']}")
 
-    return miou
+    return f1score
     
 
 def cross_validation(config):
@@ -376,13 +376,13 @@ def cross_validation(config):
         fold_results.append(result)
     
     # Calculate average metrics
-    avg_val_miou = np.mean(fold_results)
-    std_val_miou = np.std(fold_results)
+    avg_val_f1score = np.mean(fold_results)
+    std_val_f1score = np.std(fold_results)
     
     print(f"\n{'='*50}")
     print(f"Cross-Validation Results ({n_folds} folds)")
     print(f"{'='*50}")
-    print(f"Average Validation mIOU: {avg_val_miou:.4f} ± {std_val_miou:.4f}")
+    print(f"Average Validation F1 Score: {avg_val_f1score:.4f} ± {std_val_f1score:.4f}")
     print(f"{'='*50}\n")
 
 def train_single(config):
