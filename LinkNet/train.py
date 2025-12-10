@@ -20,7 +20,8 @@ def train(epoch,
           road_loss,
           angle_loss,
           optimizer,
-          config
+          config, 
+          mtl
           ):
     train_loss_iou = 0
     train_loss_vec = 0
@@ -34,49 +35,82 @@ def train(epoch,
     crop_size = config["train_dataset"]["deepglobe"]["crop_size"]
 
     for i, data in enumerate(train_loader, 0):
-        inputsBGR, labels, vecmap_angles = data
-        inputsBGR = Variable(inputsBGR.float().cuda())
-        outputs, pred_vecmaps = model(inputsBGR)
-        
-        loss1 = road_loss(outputs, util.to_variable(labels[-1], requires_grad = False), False)
-        loss2 = angle_loss(pred_vecmaps, util.to_variable(vecmap_angles[-1], requires_grad = False))
+        if mtl:
+            inputsBGR, labels, vecmap_angles = data
+            inputsBGR = Variable(inputsBGR.float().cuda())
+            outputs, pred_vecmaps = model(inputsBGR)
+            
+            loss1 = road_loss(outputs, util.to_variable(labels[-1], requires_grad = False), False)
+            loss2 = angle_loss(pred_vecmaps, util.to_variable(vecmap_angles[-1], requires_grad = False))
 
-        train_loss_iou += loss1.item()
-        train_loss_vec += loss2.item()
+            train_loss_iou += loss1.item()
+            train_loss_vec += loss2.item()
 
-        _, predicted = torch.max(outputs.data, 1)
+            _, predicted = torch.max(outputs.data, 1)
 
-        correctLabel = labels[-1].view(-1, crop_size, crop_size).long()
+            correctLabel = labels[-1].view(-1, crop_size, crop_size).long()
 
-        hist += util.fast_hist(
-            predicted.view(predicted.size(0), -1).cpu().numpy(),
-            correctLabel.view(correctLabel.size(0), -1).cpu().numpy(),
-            config["task1_classes"],
-        )
+            hist += util.fast_hist(
+                predicted.view(predicted.size(0), -1).cpu().numpy(),
+                correctLabel.view(correctLabel.size(0), -1).cpu().numpy(),
+                config["task1_classes"],
+            )
 
-        _, predicted_angle = torch.max(pred_vecmaps.data, 1)
-        correct_angles = vecmap_angles[-1].view(-1, crop_size, crop_size).long()
-        hist_angles += util.fast_hist(
-            predicted_angle.view(predicted_angle.size(0), -1).cpu().numpy(),
-            correct_angles.view(correct_angles.size(0), -1).cpu().numpy(),
-            config["task2_classes"],
-        )
+            _, predicted_angle = torch.max(pred_vecmaps.data, 1)
+            correct_angles = vecmap_angles[-1].view(-1, crop_size, crop_size).long()
+            hist_angles += util.fast_hist(
+                predicted_angle.view(predicted_angle.size(0), -1).cpu().numpy(),
+                correct_angles.view(correct_angles.size(0), -1).cpu().numpy(),
+                config["task2_classes"],
+            )
 
-        torch.autograd.backward([loss1, loss2])
+            torch.autograd.backward([loss1, loss2])
 
-        optimizer.step()
-        optimizer.zero_grad()
+            optimizer.step()
+            optimizer.zero_grad()
 
-        del (
-            outputs,
-            pred_vecmaps,
-            predicted,
-            correct_angles,
-            correctLabel,
-            inputsBGR,
-            labels,
-            vecmap_angles,
-        )
+            del (
+                outputs,
+                pred_vecmaps,
+                predicted,
+                correct_angles,
+                correctLabel,
+                inputsBGR,
+                labels,
+                vecmap_angles,
+            )
+        else:
+            inputsBGR, labels, vecmap_angles = data
+            inputsBGR = Variable(inputsBGR.float().cuda())
+            outputs = model(inputsBGR)
+            
+            loss1 = road_loss(outputs, util.to_variable(labels[-1], requires_grad = False), False)
+
+            train_loss_iou += loss1.item()
+
+            _, predicted = torch.max(outputs.data, 1)
+
+            correctLabel = labels[-1].view(-1, crop_size, crop_size).long()
+
+            hist += util.fast_hist(
+                predicted.view(predicted.size(0), -1).cpu().numpy(),
+                correctLabel.view(correctLabel.size(0), -1).cpu().numpy(),
+                config["task1_classes"],
+            )
+
+            torch.autograd.backward([loss1])
+
+            optimizer.step()
+            optimizer.zero_grad()
+
+            del (
+                outputs,
+                predicted,
+                correctLabel,
+                inputsBGR,
+                labels,
+                vecmap_angles,
+            )
 
 
     util.performMetrics(
@@ -104,7 +138,8 @@ def val(epoch,
         road_loss,
         angle_loss,
         fold,
-        config
+        config,
+        mtl
         ):
 
     model.eval()
@@ -118,49 +153,73 @@ def val(epoch,
 
     with torch.no_grad():
         for i, (inputsBGR, labels, vecmap_angles) in enumerate(val_loader, 0):
-            inputsBGR = Variable(
-                inputsBGR.float().cuda(), requires_grad=False
-            )
-
-            outputs, pred_vecmaps = model(inputsBGR)
-
-            loss1 = road_loss(outputs, util.to_variable(labels[0], requires_grad = False), True)
-            loss2 = angle_loss(pred_vecmaps, util.to_variable(labels[0], requires_grad = False))
-
-            test_loss_iou += loss1.item()
-            test_loss_vec += loss2.item()
-
-            _, predicted = torch.max(outputs.data, 1)
-
-            correctLabel = labels[-1].view(-1, crop_size, crop_size).long()
-            hist += util.fast_hist(
-                predicted.view(predicted.size(0), -1).cpu().numpy(),
-                correctLabel.view(correctLabel.size(0), -1).cpu().numpy(),
-                config["task1_classes"],
-            )
-
-            _, predicted_angle = torch.max(pred_vecmaps.data, 1)
-            correct_angles = vecmap_angles[-1].view(-1, crop_size, crop_size).long()
-            hist_angles += util.fast_hist(
-                predicted_angle.view(predicted_angle.size(0), -1).cpu().numpy(),
-                correct_angles.view(correct_angles.size(0), -1).cpu().numpy(),
-                config["task2_classes"],
-            )
-
-            if epoch == config["trainer"]["total_epochs"] and i == len(val_loader) - 1:
-                images_path = os.path.join(experiment_dir, "images", str(fold))
-                os.makedirs(images_path, exist_ok=True)
-                util.savePredictedProb(
-                    inputsBGR.data.cpu(),
-                    labels[-1].cpu(),
-                    predicted.cpu(),
-                    F.softmax(outputs, dim=1).data.cpu()[:, 1, :, :],
-                    predicted_angle.cpu(),
-                    os.path.join(images_path, "validate_pair_{}_{}.png".format(epoch, i)),
-                    norm_type=config["val_dataset"]["normalize_type"],
+            if mtl:
+                inputsBGR = Variable(
+                    inputsBGR.float().cuda(), requires_grad=False
                 )
 
-            del inputsBGR, labels, predicted, outputs, pred_vecmaps, predicted_angle
+                outputs, pred_vecmaps = model(inputsBGR)
+
+                loss1 = road_loss(outputs, util.to_variable(labels[0], requires_grad = False), True)
+                loss2 = angle_loss(pred_vecmaps, util.to_variable(labels[0], requires_grad = False))
+
+                test_loss_iou += loss1.item()
+                test_loss_vec += loss2.item()
+
+                _, predicted = torch.max(outputs.data, 1)
+
+                correctLabel = labels[-1].view(-1, crop_size, crop_size).long()
+                hist += util.fast_hist(
+                    predicted.view(predicted.size(0), -1).cpu().numpy(),
+                    correctLabel.view(correctLabel.size(0), -1).cpu().numpy(),
+                    config["task1_classes"],
+                )
+
+                _, predicted_angle = torch.max(pred_vecmaps.data, 1)
+                correct_angles = vecmap_angles[-1].view(-1, crop_size, crop_size).long()
+                hist_angles += util.fast_hist(
+                    predicted_angle.view(predicted_angle.size(0), -1).cpu().numpy(),
+                    correct_angles.view(correct_angles.size(0), -1).cpu().numpy(),
+                    config["task2_classes"],
+                )
+
+                if epoch == config["trainer"]["total_epochs"] and i == len(val_loader) - 1:
+                    images_path = os.path.join(experiment_dir, "images", str(fold))
+                    os.makedirs(images_path, exist_ok=True)
+                    util.savePredictedProb(
+                        inputsBGR.data.cpu(),
+                        labels[-1].cpu(),
+                        predicted.cpu(),
+                        F.softmax(outputs, dim=1).data.cpu()[:, 1, :, :],
+                        predicted_angle.cpu(),
+                        os.path.join(images_path, "validate_pair_{}_{}.png".format(epoch, i)),
+                        norm_type=config["val_dataset"]["normalize_type"],
+                    )
+
+                del inputsBGR, labels, predicted, outputs, pred_vecmaps, predicted_angle
+
+            else:
+                inputsBGR = Variable(
+                    inputsBGR.float().cuda(), requires_grad=False
+                )
+
+                outputs = model(inputsBGR)
+
+                loss1 = road_loss(outputs, util.to_variable(labels[0], requires_grad = False), True)
+
+                test_loss_iou += loss1.item()
+
+                _, predicted = torch.max(outputs.data, 1)
+
+                correctLabel = labels[-1].view(-1, crop_size, crop_size).long()
+                hist += util.fast_hist(
+                    predicted.view(predicted.size(0), -1).cpu().numpy(),
+                    correctLabel.view(correctLabel.size(0), -1).cpu().numpy(),
+                    config["task1_classes"],
+                )
+
+                del inputsBGR, labels, predicted, outputs
+
 
     accuracy, miou, road_iou, fwacc, f1class1 = util.performMetrics(
         train_loss_file,
@@ -197,9 +256,19 @@ def train_fold(config, fold, n_folds):
     # Initialize model
     MODEL_CHOOSEN = config["model_name"]
 
-    model = MODELS[MODEL_CHOOSEN](
+    # Multi-task learning flag
+    if MODEL_CHOOSEN in ['DLinkNetMTL', 'SpinDLinkNetMTL']:
+        mtl = True
+        model = MODELS[MODEL_CHOOSEN](
         config["task1_classes"], config["task2_classes"], config["backbone_pretrained"]
+        )
+        print("Multi-task learning enabled(road segmentation and orientation learning).")
+    else:
+        mtl = False
+        model = MODELS[MODEL_CHOOSEN](
+        config["task1_classes"], config["backbone_pretrained"]
     )
+        print("Single-task learning (road segmentation only).")
     model.cuda()
 
     util.weights_init(model)
@@ -281,7 +350,8 @@ def train_fold(config, fold, n_folds):
               road_loss,
               angle_loss,
               optimizer,
-              config
+              config,
+              mtl
               )
 
         if n_folds != 1:
@@ -293,7 +363,8 @@ def train_fold(config, fold, n_folds):
                             road_loss,
                             angle_loss,
                             fold,
-                            config
+                            config,
+                            mtl
                             )
             print(f"Epoch {epoch} completed, f1score: {f1score:.4f}")
         
