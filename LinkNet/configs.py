@@ -46,7 +46,6 @@ configs = [
     "trainer": {
         "total_epochs": 60,
         "logging_dir": "/content/logs/",
-        "iter_size": 1,
     }
 }
 ]
