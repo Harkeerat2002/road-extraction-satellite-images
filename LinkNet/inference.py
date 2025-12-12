@@ -24,6 +24,9 @@ class InferenceEngine(RoadDataset):
         # to avoid Deadloack  between CV Threads and Pytorch Threads caused in resizing
         cv2.setNumThreads(0)
 
+        # Full frame or patch-based inference
+        self.full_frame_inference = self.config["full_frame_inference"]
+
         # preprocess
         self.angle_theta = self.config["train_dataset"]["angle_theta"]
         self.mean_bgr = np.array(eval(self.config["train_dataset"]["mean"]))
@@ -61,16 +64,18 @@ class InferenceEngine(RoadDataset):
     def load_model(self, model_path):
         """Load the pretrained model"""
         # Import your model architecture here
-        MODEL_CHOOSEN = self.config["model_name"] #"StackHourglassNetMTL" or "LinkNet34MTL"
+        MODEL_CHOOSEN = self.config["model_name"]
 
-        if MODEL_CHOOSEN == "StackHourglassNetMTL":
-            self.multi_scale_pred = True
+        if MODEL_CHOOSEN in ['DLinkNetMTL', 'SpinDLinkNetMTL']:
+            model = MODELS[MODEL_CHOOSEN](
+            self.config["task1_classes"], self.config["task2_classes"], self.config["backbone_pretrained"]
+            )
+            self.mtl = True
         else:
-            self.multi_scale_pred = False
-
-        model = MODELS[MODEL_CHOOSEN](
-        self.config["task1_classes"], self.config["task2_classes"]
-        )
+            model = MODELS[MODEL_CHOOSEN](
+            self.config["task1_classes"], self.config["backbone_pretrained"]
+            )
+            self.mtl = False
         model.cuda()
         
         checkpoint = torch.load(model_path, map_location=self.device)
@@ -150,13 +155,11 @@ class InferenceEngine(RoadDataset):
             patch_batch = patch.unsqueeze(0).to(self.device)
             
             # Forward pass
-            outputs, pred_vecmaps = self.model(patch_batch)
-            
-            # Extract task outputs (adjust based on your model output structure)
-            if self.multi_scale_pred:
-                outputs = outputs[-1]
-                pred_vecmaps = pred_vecmaps[-1]
-            
+            if self.mtl:
+                outputs, pred_vecmaps = self.model(patch_batch)
+            else:
+                outputs = self.model(patch_batch)
+                
             # Apply softmax/sigmoid
             outputs = outputs[0, :, :, :]
             seg_pred = torch.sigmoid(outputs)  # [2, 256, 256]
@@ -177,15 +180,38 @@ class InferenceEngine(RoadDataset):
         """Predict on entire test set"""
         os.makedirs(self.config["output_dir"], exist_ok=True)
         
-        for img_index in range(1, 51):
-            print(f"Processing {img_index}...")
-            image = self.getRoadData(img_index-1)
-            seg_mask, final_seg = self.predict_image(image)
-            
-            # Save segmentation mask
-            Image.fromarray((seg_mask * 255).astype(np.uint8)).save(
-                os.path.join(self.config["output_dir"], f"{img_index}_prediction.png")
-            )
+        if self.full_frame_inference:
+            print('Running Full Frame Inference')
+            for img_index in range(1, 51):
+                print(f"Processing {img_index}...")
+                image = self.getRoadData(img_index-1)
+                image = image.unsqueeze(0).to(self.device)
+                
+                # Forward pass
+                if self.mtl:
+                    outputs, pred_vecmaps = self.model(image)
+                else:
+                    outputs = self.model(image)
+                
+                outputs = outputs[0, :, :, :]
+                seg_pred = torch.sigmoid(outputs)  # [2, H, W]
+                
+                seg_mask = (seg_pred[1] > self.config['classification_threshold']).cpu().numpy()
+                
+                # Save segmentation mask
+                Image.fromarray((seg_mask * 255).astype(np.uint8)).save(
+                    os.path.join(self.config["output_dir"], f"{img_index}_prediction.png")
+                )
+        else:
+            for img_index in range(1, 51):
+                print(f"Processing {img_index}...")
+                image = self.getRoadData(img_index-1)
+                seg_mask, final_seg = self.predict_image(image)
+                
+                # Save segmentation mask
+                Image.fromarray((seg_mask * 255).astype(np.uint8)).save(
+                    os.path.join(self.config["output_dir"], f"{img_index}_prediction.png")
+                )
 
 
 def main(config):
