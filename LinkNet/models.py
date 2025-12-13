@@ -91,7 +91,6 @@ class LinkNet34(nn.Module):
         self.finalrelu2 = nn.LeakyReLU(0.2, inplace=True)
         self.finalconv3 = nn.Conv2d(32, num_classes, 2, padding=1)
         self.return_features = False
-        self.tanh = nn.Tanh()
 
         for m in [self.finaldeconv1, self.finalconv2]:
             if isinstance(m, nn.Conv2d):
@@ -203,7 +202,6 @@ class DLinkNet34(nn.Module):
         self.finalrelu2 = nn.LeakyReLU(0.2, inplace=True)
         self.finalconv3 = nn.Conv2d(32, num_classes, 2, padding=1)
         self.return_features = False
-        self.tanh = nn.Tanh()
 
         for m in [self.finaldeconv1, self.finalconv2]:
             if isinstance(m, nn.Conv2d):

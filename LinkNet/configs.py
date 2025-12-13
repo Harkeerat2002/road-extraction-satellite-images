@@ -209,13 +209,12 @@ configs = [
     "task2_weight": 1,
     "train_batch_size": 8,
     "val_batch_size": 8,
-    "model_name": "DLinkNet34MTL",
+    "model_name": "DLinkNetMTL",
     "checkpoint_path": "/content/checkpoints/final_model.pth",
     "test_dir": "/content/drive/MyDrive/CS433/test_set_images/",
     "output_dir": "/content/results/",
     "nfolds": 5,
     "classification_threshold": 0.5,
-    "full_frame_inference": True,
     "backbone_pretrained": False,
     "train_dataset": {
         "deepglobe":{
@@ -247,7 +246,7 @@ configs = [
         "weight_decay": 0.0005,
     },
     "trainer": {
-        "total_epochs": 200,
+        "total_epochs": 100,
         "logging_dir": "/content/logs/",
     }
 },
