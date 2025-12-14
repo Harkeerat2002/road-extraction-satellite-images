@@ -152,7 +152,7 @@ class InferenceEngine(RoadDataset):
         # Predict on patches
         predictions = []
         for patch in patches:
-            patch_batch = patch.unsqueeze(0).to(self.device)
+            patch_batch = patch.unsqueeze(0).float().to(self.device)
             
             # Forward pass
             if self.mtl:
@@ -185,7 +185,7 @@ class InferenceEngine(RoadDataset):
             for img_index in range(1, 51):
                 print(f"Processing {img_index}...")
                 image = self.getRoadData(img_index-1)
-                image = image.unsqueeze(0).to(self.device)
+                image = image.unsqueeze(0).float().to(self.device)
                 
                 # Forward pass
                 if self.mtl:
