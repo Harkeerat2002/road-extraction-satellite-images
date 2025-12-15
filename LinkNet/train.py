@@ -271,7 +271,10 @@ def train_fold(config, fold, n_folds):
         print("Single-task learning (road segmentation only).")
     model.cuda()
 
-    util.weights_init(model)
+    if config["backbone_pretrained"]:
+        print("Using pretrained backbone weights.")
+    else:
+        util.weights_init(model)
 
     # Initialize optimizer
     optimizer = optim.Adam(model.parameters(), 
