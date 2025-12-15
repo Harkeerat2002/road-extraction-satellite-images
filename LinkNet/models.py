@@ -5,6 +5,7 @@ import os
 import random
 
 import numpy as np
+import torch
 import torch.nn as nn
 from torchvision import models
 import torch.nn.functional as F
@@ -544,7 +545,110 @@ class SpinDLinkNet34MTL(nn.Module):
         return f5, a_f5
 
 
+class ConvBlockUnet(nn.Module):
+    """
+    Standard U-Net Convolution Block:
+    Conv2D -> BN -> ReLU -> Conv2D -> BN -> ReLU
+    """
+    def __init__(self, in_channels, out_channels):
+        super(ConvBlockUnet, self).__init__()
+        self.conv1 = nn.Conv2d(in_channels, out_channels, kernel_size=3, padding=1)
+        self.bn1 = nn.BatchNorm2d(out_channels)
+        self.conv2 = nn.Conv2d(out_channels, out_channels, kernel_size=3, padding=1)
+        self.bn2 = nn.BatchNorm2d(out_channels)
+        self.relu = nn.ReLU(inplace=True)
+
+    def forward(self, x):
+        x = self.relu(self.bn1(self.conv1(x)))
+        x = self.relu(self.bn2(self.conv2(x)))
+        return x
+
+class UNet(nn.Module):
+    def __init__(self, num_classes=2, **args):
+        super(UNet, self).__init__()
+        
+        # Hardcoded input channels as requested
+        in_channels = 3
+
+        # --- Contracting Path (Encoder) ---
+        self.c1 = ConvBlockUnet(in_channels, 32)
+        self.p1 = nn.MaxPool2d(kernel_size=2, stride=2)
+
+        self.c2 = ConvBlockUnet(32, 64)
+        self.p2 = nn.MaxPool2d(kernel_size=2, stride=2)
+
+        self.c3 = ConvBlockUnet(64, 128)
+        self.p3 = nn.MaxPool2d(kernel_size=2, stride=2)
+
+        self.c4 = ConvBlockUnet(128, 256)
+        self.p4 = nn.MaxPool2d(kernel_size=2, stride=2)
+
+        # --- Bridge ---
+        self.c5 = ConvBlockUnet(256, 512)
+        self.dropout = nn.Dropout(0.5)
+
+        # --- Expansive Path (Decoder) ---
+        self.u6 = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
+        self.c6 = ConvBlockUnet(512 + 256, 256)
+
+        self.u7 = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
+        self.c7 = ConvBlockUnet(256 + 128, 128)
+
+        self.u8 = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
+        self.c8 = ConvBlockUnet(128 + 64, 64)
+
+        self.u9 = nn.Upsample(scale_factor=2, mode='bilinear', align_corners=True)
+        self.c9 = ConvBlockUnet(64 + 32, 32)
+
+        # --- Output Layer ---
+        # Outputs num_classes channels (e.g., 2 channels for 2 classes)
+        self.output_layer = nn.Conv2d(32, num_classes, kernel_size=1)
+        
+        # Softmax over the channel dimension (dim=1)
+        self.softmax = nn.Softmax(dim=1)
+
+    def forward(self, x):
+        # Encoder
+        c1 = self.c1(x)
+        p1 = self.p1(c1)
+
+        c2 = self.c2(p1)
+        p2 = self.p2(c2)
+
+        c3 = self.c3(p2)
+        p3 = self.p3(c3)
+
+        c4 = self.c4(p3)
+        p4 = self.p4(c4)
+
+        # Bridge
+        c5 = self.c5(p4)
+        c5 = self.dropout(c5)
+
+        # Decoder
+        u6 = self.u6(c5)
+        u6 = torch.cat([u6, c4], dim=1)
+        c6 = self.c6(u6)
+
+        u7 = self.u7(c6)
+        u7 = torch.cat([u7, c3], dim=1)
+        c7 = self.c7(u7)
+
+        u8 = self.u8(c7)
+        u8 = torch.cat([u8, c2], dim=1)
+        c8 = self.c8(u8)
+
+        u9 = self.u9(c8)
+        u9 = torch.cat([u9, c1], dim=1)
+        c9 = self.c9(u9)
+
+        # Output
+        outputs = self.output_layer(c9)
+        
+        return outputs
+
 MODELS = {"LinkNet": LinkNet34, 
           "DLinkNet": DLinkNet34, 
           "DLinkNetMTL": DLinkNet34MTL, 
-          "SpinDLinkNetMTL": SpinDLinkNet34MTL}
+          "SpinDLinkNetMTL": SpinDLinkNet34MTL,
+          "UNet": UNet}
