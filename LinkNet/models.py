@@ -564,7 +564,7 @@ class ConvBlockUnet(nn.Module):
         return x
 
 class UNet(nn.Module):
-    def __init__(self, num_classes=2, **args):
+    def __init__(self, num_classes=2, *args):
         super(UNet, self).__init__()
         
         # Hardcoded input channels as requested
