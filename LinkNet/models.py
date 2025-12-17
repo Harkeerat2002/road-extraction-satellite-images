@@ -448,7 +448,6 @@ class SpinDLinkNet34MTL(nn.Module):
 
         #Spin module
         self.dgcn_seg_1 = spin(planes=32, ratio=1)
-        self.dgcn_seg_2 = spin(planes=32, ratio=1)
 
         for m in [
             self.finaldeconv1,
@@ -511,7 +510,6 @@ class SpinDLinkNet34MTL(nn.Module):
         f2 = self.dgcn_seg_1(f2) #Graph reasoning at LEVEL 4 - 257 x 257 - SPIN layer 1
         f3 = self.finalconv2(f2)
         f4 = self.finalrelu2(f3)
-        f4 = self.dgcn_seg_2(f4) #Graph reasoning at LEVEL 4 - 255 x 255 - SPIN layer 2
         f5 = self.finalconv3(f4)
 
         # Decoder with Skip Connections
