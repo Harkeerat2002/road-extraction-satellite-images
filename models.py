@@ -645,8 +645,70 @@ class UNet(nn.Module):
         
         return outputs
 
-MODELS = {"LinkNet": LinkNet34, 
-          "DLinkNet": DLinkNet34, 
-          "DLinkNetMTL": DLinkNet34MTL, 
-          "SpinDLinkNetMTL": SpinDLinkNet34MTL,
-          "UNet": UNet}
+
+class SimpleCNN(nn.Module):
+    """
+    Minimal fully-convolutional CNN for segmentation (no encoder/decoder, no skip connections).
+
+    Signature matches the existing training code:
+      MODELS[name](num_classes, backbone_pretrained)
+    """
+
+    def __init__(self, num_classes=2, pretrainresnet=False, base_channels=32, num_blocks=6):
+        super().__init__()
+        _ = pretrainresnet  # unused; kept for compatibility with the framework
+
+        layers = []
+        in_channels = 3
+        channels = base_channels
+
+        for i in range(num_blocks):
+            layers.append(
+                nn.Conv2d(
+                    in_channels,
+                    channels,
+                    kernel_size=3,
+                    padding=1,
+                    bias=False,
+                )
+            )
+            layers.append(nn.BatchNorm2d(channels))
+            layers.append(nn.ReLU(inplace=True))
+
+            in_channels = channels
+            if i in (1, 3):
+                channels *= 2
+
+        layers.append(nn.Conv2d(in_channels, num_classes, kernel_size=1))
+        self.net = nn.Sequential(*layers)
+
+    def forward(self, x):
+        return self.net(x)
+
+
+class LogisticRegression(nn.Module):
+    """
+    Per-pixel logistic regression for segmentation (a single 1x1 conv).
+
+    For 2-class segmentation this produces 2 logits per pixel, so the existing
+    argmax-based evaluation/training code works unchanged.
+    """
+
+    def __init__(self, num_classes=2, pretrainresnet=False):
+        super().__init__()
+        _ = pretrainresnet  # unused; kept for compatibility with the framework
+        self.classifier = nn.Conv2d(3, num_classes, kernel_size=1, bias=True)
+
+    def forward(self, x):
+        return self.classifier(x)
+
+
+MODELS = {
+    "LinkNet": LinkNet34,
+    "DLinkNet": DLinkNet34,
+    "DLinkNetMTL": DLinkNet34MTL,
+    "SpinDLinkNetMTL": SpinDLinkNet34MTL,
+    "UNet": UNet,
+    "SimpleCNN": SimpleCNN,
+    "LogisticRegression": LogisticRegression,
+}
