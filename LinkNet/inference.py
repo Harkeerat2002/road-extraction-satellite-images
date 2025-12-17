@@ -7,6 +7,7 @@ from models import MODELS
 from dataset import RoadDataset
 import cv2
 import argparse
+from mask_to_submission import masks_to_submission
 
 class InferenceEngine(RoadDataset):
     def __init__(self, config):
@@ -221,8 +222,17 @@ def main(config):
     
     # Run inference
     engine.predict_test_set()
+
+    # Create submission file
+    submission_filename = 'FullFrame_submission.csv'
+    image_filenames = []
+    for i in range(1, 51):
+        image_filename = os.path.join(config["output_dir"], str(i) + '_prediction.png')
+        print(image_filename)
+        image_filenames.append(image_filename)
+    masks_to_submission(submission_filename, *image_filenames)
     
-    print(f"Inference complete! Results saved to {config["output_dir"]}")
+    print(f"Inference complete! Results saved to {config["output_dir"]} and {submission_filename}")
 
 
 if __name__ == '__main__':
