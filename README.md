@@ -38,8 +38,8 @@ Each model has a separate config in configs.py. Model definitions are in `models
 
 This repo contains these models (and their config number in configs.py):
 
-*   Logistic Regression
-*   Plain CNN
+*   Logistic Regression (config number 8)
+*   Plain CNN (config number 7)
 *   LinkNet (config number 0)
 *   D-LinkNet (config number 1)
 *   D-LinkNetMTL (config number 2)
