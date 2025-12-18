@@ -232,7 +232,7 @@ def main(config):
         image_filenames.append(image_filename)
     masks_to_submission(submission_filename, *image_filenames)
     
-    print(f"Inference complete! Results saved to {config["output_dir"]} and {submission_filename}")
+    print(f"Inference complete! Results saved to {config['output_dir']} and {submission_filename}")
 
 
 if __name__ == '__main__':
