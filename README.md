@@ -106,7 +106,7 @@ python inference.py --config 3
 
 ## Google Drive Download Link
 
-The trained models and their test predictions (submmitted on AICrowd) are present in their respective folders in the link:
+The trained models and their test predictions (submitted on AICrowd) are present in their respective folders in the link:
 https://drive.google.com/drive/folders/1xZiL0sIXOmyJODcUqneu0C-oeKCmTvWQ?usp=sharing
 
 ## References
