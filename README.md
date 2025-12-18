@@ -1,6 +1,8 @@
-# Road Segmentation From Satellite Images
+# CS-433 Machine Learning - Beyond Pixel Classification: Enforcing Topological Connectivity in Aerial Road Extraction in Limited Data Regimes
 
-This is the code for the course project in CS 433 (Machine learning).
+This is the code for the Road Segmentation Project (Project 2) in CS 433 Machine learning.
+
+The AICrowd platform was used for testing (https://www.aicrowd.com/challenges/epfl-ml-road-segmentation)
 
 ## Data
 First make sure you have the data inside data folder in this structure
