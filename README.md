@@ -36,18 +36,19 @@ bash install.sh
 
 Each model has a separate config in configs.py. Model definitions are in `models.py`
 
-This repo contains these models (and their config number in configs.py):
+The training and inference script uses a configuration ID to select the model architecture and hyperparameters. Use the table below to select the correct `config_id`.:
 
-*   Logistic Regression (config number 8)
-*   Plain CNN (config number 7)
-*   LinkNet (config number 0)
-*   D-LinkNet (config number 1)
-*   D-LinkNetMTL (config number 2)
-*   D-LinkNetRes34MTL (config number 3)
-*   SpinD-LinkNetRes34MTL (config number 4)
-*   LinkNet (without Augmentation) (config number 5)
-*   U-Net (config number 6)
-
+| Config ID | Model Name | Description |
+| :---: | :--- | :--- |
+| **0** | **LinkNet** | Standard LinkNet architecture with data augmentation. |
+| **1** | **D-LinkNet** | LinkNet with a central Dilation Block (D-Block). |
+| **2** | **D-LinkNetMTL** | D-LinkNet with Multi-Task Learning (Orientation). |
+| **3** | **D-LinkNetRes34MTL** | D-LinkNetMTL with a Pretrained ResNet34 Encoder. |
+| **4** | **SpinD-LinkNetRes34MTL** | Pretrained ResNet34 Encoder D-LinkNetMTL model with SPIN attention module. |
+| **5** | **LinkNet (without Augmentation)** | LinkNet trained without data augmentation. |
+| **6** | **U-Net** | Standard U-Net architecture. |
+| **7** | **Plain CNN** | Simple Convolutional Neural Network baseline. |
+| **8** | **Logistic Regression** | Linear baseline. |
 
 ## Inference
 
@@ -58,34 +59,34 @@ checkpoints
 ├── final_model.pth
 ```
 
-Then execute the `inference.py` script with the config number of the model.
+Then execute the `inference.py` script with the config ID of the model.
 Example:
 
 ```bash
-python inference.py --config <config_number>
+python inference.py --config <config_id>
 ```
 
-Please replace `<config_number>` with the config number of the model and put the trained model weights in the `checkpoints` directory.
+Please replace `<config_id>` with the config ID of the model and put the trained model weights in the `checkpoints` directory.
 
 ## Train
 
-Execute the `train.py` script with the config number of the model.
+Execute the `train.py` script with `crossval` 0 and config ID of the model.
 
 ```bash
-python train.py --crossval 0 --config <config_number>
+python train.py --crossval 0 --config <config_id>
 ```
 
-Please replace `<config_number>` with the config number of the model.
+Please replace `<config_id>` with the config ID of the model.
 
 ## 5-Fold Cross Validation
 
-Execute the `train.py` script with the config number of the model.
+Execute the `train.py` script with `crossval` 1 and config ID of the model.
 
 ```bash
-python train.py --crossval 1 --config <config_number>
+python train.py --crossval 1 --config <config_id>
 ```
 
-Please replace `<config_number>` with the config number of the model.
+Please replace `<config_id>` with the config ID of the model.
 
 ## Replicating the Best Model Results
 
