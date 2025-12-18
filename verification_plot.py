@@ -12,6 +12,7 @@ gt_path = '/home/chaurasi/cs433/Project2/data/training/groundtruth/satImage_002.
 
 os.makedirs('verification_plots', exist_ok = True)
 
+# Function to plot vector map to check proper working of vector map generation
 def plotVecMap(vectorMap, image, figsize_=(6,6), name=''):
     fig = plt.figure(figsize=figsize_)
     plt.axis('off')
@@ -32,6 +33,7 @@ def plotVecMap(vectorMap, image, figsize_=(6,6), name=''):
     plt.savefig('verification_plots/verification_vector_map.png', bbox_inches='tight', pad_inches=0.1, dpi=300)
     plt.show()
 
+# Generate and plot vector map and angle map
 gt_plot = cv2.imread(gt_path, 0).astype(np.float32)/ 255.0
 keypoints = getKeypoints(
         gt_plot, is_gaussian=False, smooth_dist=4

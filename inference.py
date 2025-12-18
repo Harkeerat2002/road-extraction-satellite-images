@@ -41,17 +41,21 @@ class InferenceEngine(RoadDataset):
             self.files.append(img_path)
 
     def reshape(self, image):
+        # Normalization
 
+        # Standardization
         if self.normalize_type == "Std":
             image = (image - self.mean_bgr) / (3 * self.deviation_bgr)
+        # Min-Max Normalization
         elif self.normalize_type == "MinMax":
             image = (image - self.min_bgr) / (self.max_bgr - self.min_bgr)
             image = image * 2 - 1
+        # Zero-Centering
         elif self.normalize_type == "Mean":
             image -= self.mean_bgr
         else:
             image = (image / 255.0) * 2 - 1
-
+        # HWC to CHW
         image = image.transpose(2, 0, 1)
         return image
 
@@ -181,6 +185,7 @@ class InferenceEngine(RoadDataset):
         """Predict on entire test set"""
         os.makedirs(self.config["output_dir"], exist_ok=True)
         
+        # Full frame inference
         if self.full_frame_inference:
             print('Running Full Frame Inference')
             for img_index in range(1, 51):
@@ -204,6 +209,8 @@ class InferenceEngine(RoadDataset):
                     os.path.join(self.config["output_dir"], f"{img_index}_prediction.png")
                 )
         else:
+            # Patch-based inference
+            print('Running Patch-Based Inference')
             for img_index in range(1, 51):
                 print(f"Processing {img_index}...")
                 image = self.getRoadData(img_index-1)

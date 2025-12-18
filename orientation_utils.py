@@ -65,8 +65,6 @@ def getKeypoints(mask, thresh=0.8, is_gaussian=True, is_skeleton=False, smooth_d
 def getVectorMapsAngles(shape, keypoints, theta=5, bin_size=10):
     """
     Convert Road keypoints obtained from road mask to orientation angle mask.
-    Reference: Section 3.1
-        https://anilbatra2185.github.io/papers/RoadConnectivityCVPR2019.pdf
 
     @param shape: Road Label/PIL image shape i.e. H x W
     @param keypoints: road keypoints generated from Road mask using

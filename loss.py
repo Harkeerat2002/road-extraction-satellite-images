@@ -10,13 +10,15 @@ class CrossEntropyLoss2d(nn.Module):
         self.nll_loss = nn.NLLLoss(weight, size_average, ignore_index, reduce)
 
     def forward(self, inputs, targets):
+        # inputs => N x Classes x H x W
+        # targets => N x H x W
         log_p = F.log_softmax(inputs, dim=1)
         loss = self.nll_loss(log_p, targets)
         return loss
 
 
 def to_one_hot_var(tensor, nClasses, requires_grad=False):
-
+    # Create the one hot encoding
     n, h, w = tensor.size()
     one_hot = tensor.new(n, nClasses, h, w).fill_(0)
     one_hot = one_hot.scatter_(1, tensor.view(n, 1, h, w), 1)

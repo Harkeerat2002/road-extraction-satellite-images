@@ -38,6 +38,7 @@ class DecoderBlock(nn.Module):
         self.norm3 = nn.BatchNorm2d(n_filters)
         self.relu3 = nn.ReLU(inplace=True)
 
+        # Xavier initialization
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
                 n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
@@ -67,6 +68,8 @@ class LinkNet34(nn.Module):
         super(LinkNet34, self).__init__()
 
         filters = [64, 128, 256, 512]
+
+        # Encoder: ResNet34
         resnet = models.resnet34(pretrained = pretrainresnet)
 
         self.firstconv = resnet.conv1
@@ -153,6 +156,7 @@ class LinkNet34(nn.Module):
 class Dblock(nn.Module):
     def __init__(self,channel):
         super(Dblock, self).__init__()
+        # Dilated Convolutions with different dilation rates
         self.dilate1 = nn.Conv2d(channel, channel, kernel_size=3, dilation=1, padding=1)
         self.dilate2 = nn.Conv2d(channel, channel, kernel_size=3, dilation=2, padding=2)
         self.dilate3 = nn.Conv2d(channel, channel, kernel_size=3, dilation=4, padding=4)
@@ -167,6 +171,7 @@ class Dblock(nn.Module):
         dilate2_out = F.relu(self.dilate2(dilate1_out))
         dilate3_out = F.relu(self.dilate3(dilate2_out))
         dilate4_out = F.relu(self.dilate4(dilate3_out))
+        # Residual connections of dilated convolutions
         out = x + dilate1_out + dilate2_out + dilate3_out + dilate4_out
         return out
     
@@ -175,6 +180,7 @@ class DLinkNet34(nn.Module):
         super(DLinkNet34, self).__init__()
 
         filters = [64, 128, 256, 512]
+        # Encoder: ResNet34
         resnet = models.resnet34(pretrained = pretrainresnet)
 
         self.firstconv = resnet.conv1
@@ -268,6 +274,7 @@ class DLinkNet34MTL(nn.Module):
         super(DLinkNet34MTL, self).__init__()
 
         filters = [64, 128, 256, 512]
+        # Encoder: ResNet34
         resnet = models.resnet34(pretrained = pretrainresnet)
 
         self.firstconv = resnet.conv1
@@ -282,26 +289,26 @@ class DLinkNet34MTL(nn.Module):
         # Center Dblock
         self.dblock = Dblock(512)
 
-        # Decoder
+        # Decoder for Road Segmentation Task
         self.decoder4 = DecoderBlock(filters[3], filters[2])
         self.decoder3 = DecoderBlock(filters[2], filters[1])
         self.decoder2 = DecoderBlock(filters[1], filters[0])
         self.decoder1 = DecoderBlock(filters[0], filters[0])
 
-        # Final Classifier
+        # Final Classifier for Road Segmentation Task
         self.finaldeconv1 = nn.ConvTranspose2d(filters[0], 32, 3, stride=2)
         self.finalrelu1 = nn.LeakyReLU(0.2, inplace=True)
         self.finalconv2 = nn.Conv2d(32, 32, 3)
         self.finalrelu2 = nn.LeakyReLU(0.2, inplace=True)
         self.finalconv3 = nn.Conv2d(32, task1_classes, 2, padding=1)
 
-        # Decoder
+        # Decoder for Orientation Learning Task
         self.a_decoder4 = DecoderBlock(filters[3], filters[2])
         self.a_decoder3 = DecoderBlock(filters[2], filters[1])
         self.a_decoder2 = DecoderBlock(filters[1], filters[0])
         self.a_decoder1 = DecoderBlock(filters[0], filters[0])
 
-        # Final Classifier
+        # Final Classifier for Orientation Learning Task
         self.a_finaldeconv1 = nn.ConvTranspose2d(filters[0], 32, 3, stride=2)
         self.a_finalrelu1 = nn.LeakyReLU(0.2, inplace=True)
         self.a_finalconv2 = nn.Conv2d(32, 32, 3)
@@ -342,7 +349,7 @@ class DLinkNet34MTL(nn.Module):
         # Center Dblock
         e4 = self.dblock(e4)
 
-        # Decoder with Skip Connections
+        # Decoder with Skip Connections for Road Segmentation Task
         d4 = (
             self.decoder4(e4)[
                 :, :, : int(math.ceil(rows / 16.0)), : int(math.ceil(cols / 16.0))
@@ -363,14 +370,14 @@ class DLinkNet34MTL(nn.Module):
         )
         d1 = self.decoder1(d2)
 
-        # Final Classification
+        # Final Classification for Road Segmentation Task
         f1 = self.finaldeconv1(d1)
         f2 = self.finalrelu1(f1)
         f3 = self.finalconv2(f2)
         f4 = self.finalrelu2(f3)
         f5 = self.finalconv3(f4)
 
-        # Decoder with Skip Connections
+        # Decoder with Skip Connections for Orientation Learning Task
         a_d4 = (
             self.a_decoder4(e4)[
                 :, :, : int(math.ceil(rows / 16.0)), : int(math.ceil(cols / 16.0))
@@ -391,7 +398,7 @@ class DLinkNet34MTL(nn.Module):
         )
         a_d1 = self.a_decoder1(a_d2)
 
-        # Final Classification
+        # Final Classification for Orientation Learning Task
         a_f1 = self.a_finaldeconv1(a_d1)
         a_f2 = self.a_finalrelu1(a_f1)
         a_f3 = self.a_finalconv2(a_f2)
@@ -420,33 +427,33 @@ class SpinDLinkNet34MTL(nn.Module):
         # Center Dblock
         self.dblock = Dblock(512)
 
-        # Decoder
+        # Decoder for Road Segmentation Task
         self.decoder4 = DecoderBlock(filters[3], filters[2])
         self.decoder3 = DecoderBlock(filters[2], filters[1])
         self.decoder2 = DecoderBlock(filters[1], filters[0])
         self.decoder1 = DecoderBlock(filters[0], filters[0])
 
-        # Final Classifier
+        # Final Classifier for Road Segmentation Task
         self.finaldeconv1 = nn.ConvTranspose2d(filters[0], 32, 3, stride=2)
         self.finalrelu1 = nn.LeakyReLU(0.2, inplace=True)
         self.finalconv2 = nn.Conv2d(32, 32, 3)
         self.finalrelu2 = nn.LeakyReLU(0.2, inplace=True)
         self.finalconv3 = nn.Conv2d(32, task1_classes, 2, padding=1)
 
-        # Decoder
+        # Decoder for Orientation Learning Task
         self.a_decoder4 = DecoderBlock(filters[3], filters[2])
         self.a_decoder3 = DecoderBlock(filters[2], filters[1])
         self.a_decoder2 = DecoderBlock(filters[1], filters[0])
         self.a_decoder1 = DecoderBlock(filters[0], filters[0])
 
-        # Final Classifier
+        # Final Classifier for Orientation Learning Task
         self.a_finaldeconv1 = nn.ConvTranspose2d(filters[0], 32, 3, stride=2)
         self.a_finalrelu1 = nn.LeakyReLU(0.2, inplace=True)
         self.a_finalconv2 = nn.Conv2d(32, 32, 3)
         self.a_finalrelu2 = nn.LeakyReLU(0.2, inplace=True)
         self.a_finalconv3 = nn.Conv2d(32, task2_classes, 2, padding=1)
 
-        #Spin module
+        # Spin module for Road Segmentation Task
         self.dgcn_seg_1 = spin(planes=32, ratio=1)
 
         for m in [
@@ -483,7 +490,7 @@ class SpinDLinkNet34MTL(nn.Module):
         # Center Dblock
         e4 = self.dblock(e4)
 
-        # Decoder with Skip Connections
+        # Decoder with Skip Connections for Road Segmentation Task
         d4 = (
             self.decoder4(e4)[
                 :, :, : int(math.ceil(rows / 16.0)), : int(math.ceil(cols / 16.0))
@@ -504,15 +511,15 @@ class SpinDLinkNet34MTL(nn.Module):
         )
         d1 = self.decoder1(d2)
 
-        # Final Classification
+        # Final Classification for Road Segmentation Task
         f1 = self.finaldeconv1(d1)
         f2 = self.finalrelu1(f1)
-        f2 = self.dgcn_seg_1(f2) #Graph reasoning at LEVEL 4 - 257 x 257 - SPIN layer 1
+        f2 = self.dgcn_seg_1(f2) #Graph reasoning at LEVEL 4 - SPIN layer 1
         f3 = self.finalconv2(f2)
         f4 = self.finalrelu2(f3)
         f5 = self.finalconv3(f4)
 
-        # Decoder with Skip Connections
+        # Decoder with Skip Connections for Orientation Learning Task
         a_d4 = (
             self.a_decoder4(e4)[
                 :, :, : int(math.ceil(rows / 16.0)), : int(math.ceil(cols / 16.0))
@@ -533,7 +540,7 @@ class SpinDLinkNet34MTL(nn.Module):
         )
         a_d1 = self.a_decoder1(a_d2)
 
-        # Final Classification
+        # Final Classification for Orientation Learning Task
         a_f1 = self.a_finaldeconv1(a_d1)
         a_f2 = self.a_finalrelu1(a_f1)
         a_f3 = self.a_finalconv2(a_f2)
@@ -661,7 +668,7 @@ class SimpleCNN(nn.Module):
         layers = []
         in_channels = 3
         channels = base_channels
-
+        # Build a sequence of conv-batchnorm-relu blocks
         for i in range(num_blocks):
             layers.append(
                 nn.Conv2d(
@@ -678,7 +685,7 @@ class SimpleCNN(nn.Module):
             in_channels = channels
             if i in (1, 3):
                 channels *= 2
-
+        # Final 1x1 conv to get desired number of output classes = 2
         layers.append(nn.Conv2d(in_channels, num_classes, kernel_size=1))
         self.net = nn.Sequential(*layers)
 

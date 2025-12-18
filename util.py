@@ -10,6 +10,7 @@ from skimage.morphology import skeletonize
 
 
 def str2bool(v):
+    # Convert string to boolean for argparse
     if isinstance(v, bool):
         return v
     if v.lower() in ("yes", "true", "t", "y", "1"):
@@ -21,6 +22,7 @@ def str2bool(v):
 
 
 def setSeed(config):
+    # Set random seed for reproducibility
     manualSeed = config["seed"]
     print("Random Seed: ", manualSeed)
     # Python random module
@@ -50,10 +52,12 @@ def getParllelNetworkStateDict(state_dict):
 
 
 def to_variable(tensor, requires_grad=True):
+    # Converts a tensor to a torch Variable
     return Variable(tensor.long().cuda(), requires_grad=requires_grad)
 
 
 def weights_init(model):
+    # Xavier initialization of model weights
     for m in model.modules():
         if isinstance(m, nn.Conv2d) or isinstance(m, nn.ConvTranspose2d):
             n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
@@ -64,6 +68,7 @@ def weights_init(model):
 
 
 def weights_normal_init(model):
+    # Normal initialization of model weights
     for m in model.modules():
         if isinstance(m, nn.Conv2d) or isinstance(m, nn.ConvTranspose2d):
             m.weight.data.normal_(0.0, 0.02)
@@ -75,7 +80,7 @@ def weights_normal_init(model):
 def performAngleMetrics(
     train_loss_angle_file, val_loss_angle_file, epoch, hist, is_train=True, write=False
 ):
-
+    # Calculate and log angle metrics
     pixel_accuracy = np.diag(hist).sum() / hist.sum()
     mean_accuracy = np.diag(hist) / hist.sum(1)
     mean_iou = np.diag(hist) / (hist.sum(1) + hist.sum(0) - np.diag(hist))
@@ -117,13 +122,13 @@ def performMetrics(
     is_train=True,
     write=False,
 ):
-
+    # Calculate and log road segmentation metrics
     pixel_accuracy = np.diag(hist).sum() / hist.sum()
     mean_accuracy = np.diag(hist) / hist.sum(1)
     mean_iou = np.diag(hist) / (hist.sum(1) + hist.sum(0) - np.diag(hist))
     freq = hist.sum(1) / hist.sum()
     fwavacc = (freq[freq > 0] * mean_iou[freq > 0]).sum()
-
+    # Total Positive, False Positive, False Negative for class 1
     TP = hist[1, 1]
     FP = hist[0, 1]
     FN = hist[1, 0]
@@ -170,7 +175,7 @@ def performMetrics(
 
 
 def fast_hist(a, b, n):
-
+    # Compute confusion matrix
     k = (a >= 0) & (a < n)
     return np.bincount(n * a[k].astype(int) + b[k], minlength=n ** 2).reshape(n, n)
 
@@ -318,6 +323,7 @@ def binarize(img, threshold=128):
 
 
 def compute_dataset_mean_std():
+    # Compute mean and standard deviation of dataset images
     folder = "/content/drive/MyDrive/CS433/training/images/"
 
     sum_c = np.zeros(3, dtype=np.float64)

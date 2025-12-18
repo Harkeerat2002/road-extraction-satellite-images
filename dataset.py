@@ -27,6 +27,7 @@ class RoadDataset(data.Dataset):
         torch.manual_seed(seed)
         random.seed(seed)
 
+        # Fold info
         self.fold = fold
         self.n_folds = n_folds
 
@@ -99,7 +100,7 @@ class RoadDataset(data.Dataset):
             # 1. Random Crop
             transforms_list.append(A.RandomCrop(height=h, width=w))
 
-            # 2. Augmentations (Flip, Rotate, etc.)
+            # 2. Augmentations (Flip, Rotate, Scale, Zoom, etc.)
             if self.augmentation == 1:
                 transforms_list.extend([
                     A.HorizontalFlip(p=0.5),
@@ -126,6 +127,7 @@ class RoadDataset(data.Dataset):
 
         if os.path.isfile(image_dict["lbl"]):
             gt = cv2.imread(image_dict["lbl"], 0)
+            # Binarize the ground truth image to 0 and 255
             gt = binarize(gt, 128).astype(np.uint8)
 
         else:
@@ -151,6 +153,8 @@ class RoadDataset(data.Dataset):
         return image, gt
 
     def getOrientationGT(self, keypoints, height, width):
+        # Create Orientation Ground Truth from Keypoints
+
         vecmap, vecmap_angles = getVectorMapsAngles(
             (height, width), keypoints, theta=self.angle_theta, bin_size=10
         )
@@ -159,17 +163,21 @@ class RoadDataset(data.Dataset):
         return vecmap_angles
 
     def reshape(self, image):
+        # Normalize the image based on the specified normalization type
 
+        # Standardization
         if self.normalize_type == "Std":
             image = (image - self.mean_bgr) / (3 * self.deviation_bgr)
+        # Min-Max Scaling
         elif self.normalize_type == "MinMax":
             image = (image - self.min_bgr) / (self.max_bgr - self.min_bgr)
             image = image * 2 - 1
+        # Zero-Centering
         elif self.normalize_type == "Mean":
             image -= self.mean_bgr
         else:
             image = (image / 255.0) * 2 - 1
-
+        # Change HWC to CHW
         image = image.transpose(2, 0, 1)
         return image
 
@@ -193,7 +201,7 @@ class DeepGlobeDataset(RoadDataset):
             )
 
     def __getitem__(self, index):
-
+        # Get Image and Ground Truth
         image, gt = self.getRoadData(index)
         c, h, w = image.shape
 
