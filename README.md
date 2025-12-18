@@ -26,7 +26,7 @@ data
 
 ## Installation instructions
 
-First create a virtual environment with python 3.12.12.
+First create a virtual environment with python 3.12.12. Then run:
 
 ```bash
 bash install.sh
