@@ -1,3 +1,18 @@
+# Road Extraction from Satellite Images (EPFL CS-433 Machine Learning)
+
+> Team project by **Sajal Chaurasia, Harkeerat Singh Sawhney and Marco Costa Padilla** for EPFL CS-433 Machine Learning (Fall 2025).
+> Public copy of the original (private) course repository, published with its full commit history.
+
+**My contribution (Harkeerat):** implemented the U-Net baseline: data loading, model, training loop with F1-score
+evaluation, prediction visualisation and the mask/submission conversion scripts (`mask_to_submission.py`,
+`submission_to_mask.py`). The U-Net was later integrated into the team's model suite (`models.py`). Co-author of the
+report ([`ML_Project_2_Report.pdf`](ML_Project_2_Report.pdf)).
+
+**Team result:** with only 100 labelled training images, the team's best model (multi-task D-LinkNet with a ResNet-34
+encoder that also predicts road orientation) reached a test F1 of 0.917 vs. 0.368 for the baseline.
+
+---
+
 # CS-433 Machine Learning - Beyond Pixel Classification: Enforcing Topological Connectivity in Aerial Road Extraction in Limited Data Regimes
 
 This is the code for the Road Segmentation Project (Project 2) in CS 433 Machine learning.
